@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
+	v1alpha1 "github.com/heptio/contour/pkg/apis/contour/v1alpha1"
 	"github.com/sirupsen/logrus"
 
 	"k8s.io/api/core/v1"
@@ -67,6 +68,8 @@ func (t *Translator) OnAdd(obj interface{}) {
 		t.VirtualHostCache.Notify()
 	case *v1.Secret:
 		t.addSecret(obj)
+	case *v1alpha1.Route:
+		t.addRoute(obj)
 	default:
 		t.Errorf("OnAdd unexpected type %T: %#v", obj, obj)
 	}
@@ -100,6 +103,8 @@ func (t *Translator) OnUpdate(oldObj, newObj interface{}) {
 		t.VirtualHostCache.Notify()
 	case *v1.Secret:
 		t.addSecret(newObj)
+	case *v1alpha1.Route:
+		t.addRoute(newObj)
 	default:
 		t.Errorf("OnUpdate unexpected type %T: %#v", newObj, newObj)
 	}
@@ -119,6 +124,8 @@ func (t *Translator) OnDelete(obj interface{}) {
 		t.removeSecret(obj)
 	case cache.DeletedFinalStateUnknown:
 		t.OnDelete(obj.Obj) // recurse into ourselves with the tombstoned value
+	case *v1alpha1.Route:
+		t.removeRoute(obj)
 	default:
 		t.Errorf("OnDelete unexpected type %T: %#v", obj, obj)
 	}
@@ -229,6 +236,14 @@ func (t *Translator) addSecret(s *v1.Secret) {
 
 func (t *Translator) removeSecret(s *v1.Secret) {
 	t.recomputeTLSListener(t.cache.ingresses, t.cache.secrets)
+}
+
+func (t *Translator) addRoute(s *v1alpha1.Route) {
+	t.Infof("-------- ADD ROUTE: %s", s.ObjectMeta.Name)
+}
+
+func (t *Translator) removeRoute(s *v1alpha1.Route) {
+	t.Infof("-------- DELETE ROUTE: %s", s.ObjectMeta.Name)
 }
 
 type translatorCache struct {
