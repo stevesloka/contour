@@ -47,9 +47,6 @@ func init() {
 
 func main() {
 	log := logrus.StandardLogger()
-	t := &contour.Translator{
-		FieldLogger: log.WithField("context", "translator"),
-	}
 
 	app := kingpin.New("contour", "Heptio Contour Kubernetes ingress controller.")
 	bootstrap := app.Command("bootstrap", "Generate bootstrap configuration.")
@@ -67,6 +64,7 @@ func main() {
 	xdsAddr := serve.Flag("xds-address", "xDS gRPC API address").Default("127.0.0.1").String()
 	xdsPort := serve.Flag("xds-port", "xDS gRPC API port").Default("8001").Int()
 
+<<<<<<< HEAD
 	// translator configuration
 	serve.Flag("envoy-http-address", "Envoy HTTP listener address").StringVar(&t.HTTPAddress)
 	serve.Flag("envoy-https-address", "Envoy HTTPS listener address").StringVar(&t.HTTPSAddress)
@@ -75,6 +73,8 @@ func main() {
 	serve.Flag("use-proxy-protocol", "Use PROXY protocol for all listeners").BoolVar(&t.UseProxyProto)
 	serve.Flag("ingress-class-name", "Contour IngressClass name").StringVar(&t.IngressClass)
 
+=======
+>>>>>>> 3c16656... Implemented status / Refactored distribution logic
 	args := os.Args[1:]
 	switch kingpin.MustParse(app.Parse(args)) {
 	default:
@@ -86,10 +86,22 @@ func main() {
 		log.Infof("args: %v", args)
 		var g workgroup.Group
 
+		client, contourClient := newClient(*kubeconfig, *inCluster)
+
+		t := &contour.Translator{
+			FieldLogger:   log.WithField("context", "translator"),
+			ContourClient: contourClient,
+		}
+
+		// translator configuration
+		serve.Flag("envoy-http-address", "Envoy HTTP listener address").StringVar(&t.HTTPAddress)
+		serve.Flag("envoy-https-address", "Envoy HTTPS listener address").StringVar(&t.HTTPSAddress)
+		serve.Flag("envoy-http-port", "Envoy HTTP listener port").IntVar(&t.HTTPPort)
+		serve.Flag("envoy-https-port", "Envoy HTTPS listener port").IntVar(&t.HTTPSPort)
+		serve.Flag("use-proxy-protocol", "Use PROXY protocol for all listeners").BoolVar(&t.UseProxyProto)
+
 		// buffer notifications to t to ensure they are handled sequentially.
 		buf := k8s.NewBuffer(&g, t, log, 128)
-
-		client, contourClient := newClient(*kubeconfig, *inCluster)
 
 		wl := log.WithField("context", "watch")
 		k8s.WatchServices(&g, client, wl, buf)

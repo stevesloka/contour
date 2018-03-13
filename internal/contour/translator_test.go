@@ -14,7 +14,9 @@
 package contour
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -22,11 +24,16 @@ import (
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/route"
 	google_protobuf1 "github.com/gogo/protobuf/types"
 	v1alpha1 "github.com/heptio/contour/pkg/apis/contour/v1alpha1"
+	clientset "github.com/heptio/contour/pkg/generated/clientset/versioned"
+	crdFake "github.com/heptio/contour/pkg/generated/clientset/versioned/fake"
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/rest"
+	k8stesting "k8s.io/client-go/testing"
 )
 
 func TestTranslatorAddService(t *testing.T) {
@@ -1128,9 +1135,12 @@ func TestTranslatorAddRouteCRD(t *testing.T) {
 										{
 											Name: "default/backend/80",
 											Weight: &google_protobuf1.UInt32Value{
-												Value: uint32(100),
+												Value: uint32(1),
 											},
 										},
+									},
+									TotalWeight: &google_protobuf1.UInt32Value{
+										Value: uint32(1),
 									},
 								},
 							},
@@ -1175,9 +1185,12 @@ func TestTranslatorAddRouteCRD(t *testing.T) {
 										{
 											Name: "default/backend/80",
 											Weight: &google_protobuf1.UInt32Value{
-												Value: uint32(100),
+												Value: uint32(1),
 											},
 										},
+									},
+									TotalWeight: &google_protobuf1.UInt32Value{
+										Value: uint32(1),
 									},
 								},
 							},
@@ -1222,9 +1235,12 @@ func TestTranslatorAddRouteCRD(t *testing.T) {
 										{
 											Name: "default/backend/80",
 											Weight: &google_protobuf1.UInt32Value{
-												Value: uint32(100),
+												Value: uint32(1),
 											},
 										},
+									},
+									TotalWeight: &google_protobuf1.UInt32Value{
+										Value: uint32(1),
 									},
 								},
 							},
@@ -1278,9 +1294,12 @@ func TestTranslatorAddRouteCRD(t *testing.T) {
 										{
 											Name: "default/backend/80",
 											Weight: &google_protobuf1.UInt32Value{
-												Value: uint32(100),
+												Value: uint32(1),
 											},
 										},
+									},
+									TotalWeight: &google_protobuf1.UInt32Value{
+										Value: uint32(1),
 									},
 								},
 							},
@@ -1297,9 +1316,12 @@ func TestTranslatorAddRouteCRD(t *testing.T) {
 											{
 												Name: "default/backendtwo/80",
 												Weight: &google_protobuf1.UInt32Value{
-													Value: uint32(100),
+													Value: uint32(1),
 												},
 											},
+										},
+										TotalWeight: &google_protobuf1.UInt32Value{
+											Value: uint32(1),
 										},
 									},
 								},
@@ -1314,8 +1336,10 @@ func TestTranslatorAddRouteCRD(t *testing.T) {
 	log := testLogger(t)
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			client, _ := clientset.NewForConfig(&rest.Config{})
 			tr := &Translator{
-				FieldLogger: log,
+				FieldLogger:   log,
+				ContourClient: client,
 			}
 			if tc.setup != nil {
 				tc.setup(tr)
@@ -1408,6 +1432,99 @@ func TestTranslatorUpdateIngress(t *testing.T) {
 			got = tr.VirtualHostCache.HTTPS.Values()
 			if !reflect.DeepEqual(tc.ingress_https, got) {
 				t.Fatalf("(ingress_https): got: %v, want: %v", got, tc.ingress_https)
+			}
+		})
+	}
+}
+
+func TestTranslatorUpdateStatus(t *testing.T) {
+	tests := []struct {
+		name           string
+		setup          func(*Translator)
+		route          *v1alpha1.Route
+		expectedRoute  *v1alpha1.Route
+		expectedStatus string
+	}{
+		{
+			name: "basic valid",
+			route: &v1alpha1.Route{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "simple",
+					Namespace: "default",
+				},
+				Spec: v1alpha1.RouteSpec{
+					Host: "foo.bar",
+					Routes: []v1alpha1.IngressRoute{
+						v1alpha1.IngressRoute{
+							PathPrefix: "/",
+							Upstreams: []v1alpha1.Upstream{
+								v1alpha1.Upstream{
+									ServiceName: "backend",
+									ServicePort: 80,
+								},
+							},
+						},
+					},
+				},
+				Status: v1alpha1.Status{
+					CurrentStatus: "foo",
+				},
+			},
+			expectedRoute: &v1alpha1.Route{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "simple",
+					Namespace: "default",
+				},
+				Spec: v1alpha1.RouteSpec{
+					Host: "foo.bar",
+					Routes: []v1alpha1.IngressRoute{
+						v1alpha1.IngressRoute{
+							PathPrefix: "/",
+							Upstreams: []v1alpha1.Upstream{
+								v1alpha1.Upstream{
+									ServiceName: "backend",
+									ServicePort: 80,
+								},
+							},
+						},
+					},
+				},
+				Status: v1alpha1.Status{
+					CurrentStatus: "bar",
+				},
+			},
+			expectedStatus: "Valid",
+		},
+	}
+
+	log := testLogger(t)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+
+			client := crdFake.NewSimpleClientset(tc.route)
+			tr := &Translator{
+				FieldLogger:   log,
+				ContourClient: client,
+			}
+
+			var gotPatchBytes []byte
+			client.PrependReactor("patch", "routes", func(action k8stesting.Action) (bool, runtime.Object, error) {
+				switch patchAction := action.(type) {
+				default:
+					return true, nil, fmt.Errorf("got unexpected action of type: %T", action)
+				case k8stesting.PatchActionImpl:
+					gotPatchBytes = patchAction.GetPatch()
+					return true, tc.expectedRoute, nil
+				}
+			})
+
+			if tc.setup != nil {
+				tc.setup(tr)
+			}
+			tr.OnAdd(tc.route)
+
+			if !strings.Contains(string(gotPatchBytes), tc.expectedStatus) {
+				t.Fatal("want: `Valid` got ``", string(gotPatchBytes))
 			}
 		})
 	}
@@ -1630,9 +1747,12 @@ func TestTranslatorRemoveRouteCRD(t *testing.T) {
 										{
 											Name: "default/peter/80",
 											Weight: &google_protobuf1.UInt32Value{
-												Value: uint32(100),
+												Value: uint32(1),
 											},
 										},
+									},
+									TotalWeight: &google_protobuf1.UInt32Value{
+										Value: uint32(1),
 									},
 								},
 							},
@@ -1671,8 +1791,10 @@ func TestTranslatorRemoveRouteCRD(t *testing.T) {
 	log := testLogger(t)
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			client, _ := clientset.NewForConfig(&rest.Config{})
 			tr := &Translator{
-				FieldLogger: log,
+				FieldLogger:   log,
+				ContourClient: client,
 			}
 			tc.setup(tr)
 			tr.OnDelete(tc.route)
