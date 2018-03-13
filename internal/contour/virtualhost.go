@@ -121,9 +121,6 @@ func (v *VirtualHostCache) recomputevhost(vhost string, ingresses map[metadata]*
 	}
 }
 
-<<<<<<< HEAD
-// action computes the cluster route action, a *route.Route_route for the
-=======
 // recomputevhostcrd recomputes the ingress_http (HTTP) and ingress_https (HTTPS) record
 // from the vhost from list of ingresses supplied.
 func (v *VirtualHostCache) recomputevhostcrd(vhost string, routes map[metadata]*v1alpha1.Route) (routeStatus []k8s.RouteStatus) {
@@ -173,7 +170,6 @@ func (v *VirtualHostCache) recomputevhostcrd(vhost string, routes map[metadata]*
 }
 
 // action computes the cluster route action, a *v2.Route_route for the
->>>>>>> a498733... Initial implementation of RouteCRD for Ingress routes
 // supplied ingress and backend.
 func action(i *v1beta1.Ingress, be *v1beta1.IngressBackend) *route.Route_Route {
 	name := ingressBackendToClusterName(i.ObjectMeta.Namespace, be.ServiceName, be.ServicePort.String())
