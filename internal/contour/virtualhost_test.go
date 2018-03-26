@@ -1212,7 +1212,6 @@ func TestVirtualHostCacheRecomputevhostCRD(t *testing.T) {
 			tr.recomputevhostcrd(tc.vhost, tc.routes)
 			got := tr.VirtualHostCache.HTTP.Values()
 			if !reflect.DeepEqual(tc.ingress_http, got) {
-				// t.Fatal("--------- weight: ", got[0].Routes[0].Action)
 				t.Fatalf("recomputevhost(%v):\n (ingress_http) want:\n%+v\n got:\n%+v", tc.vhost, tc.ingress_http, got)
 			}
 

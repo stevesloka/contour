@@ -297,9 +297,7 @@ func (t *Translator) updateRouteStatus(status k8s.RouteStatus) error {
 	if err != nil {
 		return err
 	}
-	// Need to set the resource version of the updated service to the resource
-	// version of the current service. Otherwise, the resulting patch does not
-	// have a resource version, and the server complains.
+
 	updated := existing.DeepCopy()
 	updated.Status.CurrentStatus = status.StatusMessage
 	updated.Status.LastProcessTime = time.Now().UTC().String()
@@ -311,7 +309,7 @@ func (t *Translator) updateRouteStatus(status k8s.RouteStatus) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.Patch(updated.Name, types.MergePatchType, patchBytes)
+	_, err = client.Patch(updated.Name, types.StrategicMergePatchType, patchBytes)
 	return err
 }
 
