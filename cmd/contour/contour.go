@@ -71,17 +71,6 @@ func main() {
 	xdsAddr := serve.Flag("xds-address", "xDS gRPC API address").Default("127.0.0.1").String()
 	xdsPort := serve.Flag("xds-port", "xDS gRPC API port").Default("8001").Int()
 
-<<<<<<< HEAD
-	// translator configuration
-	serve.Flag("envoy-http-address", "Envoy HTTP listener address").StringVar(&t.HTTPAddress)
-	serve.Flag("envoy-https-address", "Envoy HTTPS listener address").StringVar(&t.HTTPSAddress)
-	serve.Flag("envoy-http-port", "Envoy HTTP listener port").IntVar(&t.HTTPPort)
-	serve.Flag("envoy-https-port", "Envoy HTTPS listener port").IntVar(&t.HTTPSPort)
-	serve.Flag("use-proxy-protocol", "Use PROXY protocol for all listeners").BoolVar(&t.UseProxyProto)
-	serve.Flag("ingress-class-name", "Contour IngressClass name").StringVar(&t.IngressClass)
-
-=======
->>>>>>> 3c16656... Implemented status / Refactored distribution logic
 	args := os.Args[1:]
 	switch kingpin.MustParse(app.Parse(args)) {
 	case bootstrap.FullCommand():
@@ -115,6 +104,7 @@ func main() {
 		serve.Flag("envoy-http-port", "Envoy HTTP listener port").IntVar(&t.HTTPPort)
 		serve.Flag("envoy-https-port", "Envoy HTTPS listener port").IntVar(&t.HTTPSPort)
 		serve.Flag("use-proxy-protocol", "Use PROXY protocol for all listeners").BoolVar(&t.UseProxyProto)
+		serve.Flag("ingress-class-name", "Contour IngressClass name").StringVar(&t.IngressClass)
 
 		// buffer notifications to t to ensure they are handled sequentially.
 		buf := k8s.NewBuffer(&g, t, log, 128)
