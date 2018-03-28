@@ -19,6 +19,7 @@ import (
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/listener"
 	"github.com/gogo/protobuf/types"
+	ingressroutev1 "github.com/heptio/contour/pkg/apis/contour/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 )
@@ -77,6 +78,22 @@ func (lc *ListenerCache) recomputeListeners(ingresses map[metadata]*v1beta1.Ingr
 	if len(add) > 0 || len(remove) > 0 {
 		lc.Notify()
 	}
+}
+
+// recomputeListenersIngressRoute recomputes the ingress_http and ingress_https listeners
+// and notifies the watchers any change.
+func (lc *ListenerCache) recomputeListenersIngressRoute(ingresses map[metadata]*ingressroutev1.IngressRoute, secrets map[metadata]*v1.Secret) {
+	// add, remove := lc.recomputeListener0(ingresses)                   // recompute ingress_http
+	// ssladd, sslremove := lc.recomputeTLSListener0(ingresses, secrets) // recompute ingress_https
+
+	// add = append(add, ssladd...)
+	// remove = append(remove, sslremove...)
+	// lc.Add(add...)
+	// lc.Remove(remove...)
+
+	// if len(add) > 0 || len(remove) > 0 {
+	// 	lc.Notify()
+	// }
 }
 
 // recomputeTLSListener recomputes the ingress_https listener and notifies the watchers

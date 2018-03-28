@@ -54,7 +54,7 @@ type Route struct {
 	// Match defines the prefix match
 	Match string `json:"match"`
 	// Service are the services to proxy traffic
-	Service  []Service `json:"service"`
+	Services []Service `json:"services"`
 	Delegate `json:"delegate"`
 }
 
