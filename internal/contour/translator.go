@@ -68,6 +68,8 @@ func (t *Translator) OnAdd(obj interface{}) {
 		t.VirtualHostCache.Notify()
 	case *v1.Secret:
 		t.addSecret(obj)
+	case *ingressroutev1.IngressRoute:
+		t.addIngressRoute(obj)
 	default:
 		t.Errorf("OnAdd unexpected type %T: %#v", obj, obj)
 	}
@@ -101,6 +103,14 @@ func (t *Translator) OnUpdate(oldObj, newObj interface{}) {
 		t.VirtualHostCache.Notify()
 	case *v1.Secret:
 		t.addSecret(newObj)
+	case *ingressroutev1.IngressRoute:
+		oldObj, ok := oldObj.(*ingressroutev1.IngressRoute)
+		if !ok {
+			t.Errorf("OnUpdate ingressRoute %#v received invalid oldObj %T; %#v", newObj, oldObj, oldObj)
+			return
+		}
+		t.updateIngressRoute(oldObj, newObj)
+		t.VirtualHostCache.Notify()
 	default:
 		t.Errorf("OnUpdate unexpected type %T: %#v", newObj, newObj)
 	}
@@ -118,6 +128,8 @@ func (t *Translator) OnDelete(obj interface{}) {
 		t.VirtualHostCache.Notify()
 	case *v1.Secret:
 		t.removeSecret(obj)
+	case *ingressroutev1.IngressRoute:
+		t.removeIngressRoute(obj)
 	case cache.DeletedFinalStateUnknown:
 		t.OnDelete(obj.Obj) // recurse into ourselves with the tombstoned value
 	default:
@@ -261,6 +273,11 @@ func (t *Translator) removeIngressRoute(r *ingressroutev1.IngressRoute) {
 	}
 
 	t.recomputevhostIngressRoute(host, t.cache.vhostroutes[host])
+}
+
+func (t *Translator) updateIngressRoute(oldIng, newIng *ingressroutev1.IngressRoute) {
+	t.removeIngressRoute(oldIng)
+	t.addIngressRoute(newIng)
 }
 
 type translatorCache struct {
