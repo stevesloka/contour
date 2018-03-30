@@ -370,6 +370,8 @@ func (t *translatorCache) OnUpdate(oldObj, newObj interface{}) {
 		// which affects the t.vhost cache. The simplest way is to model
 		// update as delete, then add.
 		t.OnDelete(oldObj)
+	case *ingressroutev1.IngressRoute:
+		t.OnDelete(oldObj)
 	}
 	t.OnAdd(newObj)
 }
