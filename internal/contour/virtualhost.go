@@ -188,19 +188,20 @@ func actionroute(namespace string, be []ingressroutev1.Service) *route.Route_Rou
 
 		name := ingressBackendToClusterName(namespace, i.Name, strconv.Itoa(i.Port))
 
-		//TODO(sas): Implement TotalWeight field to make easier to calculate weight
+		// Create the empty upstream
 		upstream := route.WeightedCluster_ClusterWeight{
 			Name:   name,
 			Weight: &google_protobuf1.UInt32Value{},
 		}
 
-		// if i.Weight != nil {
-		// 	upstream.Weight.Value = uint32(*i.Weight)
-		// 	totalWeight -= *i.Weight
-		// 	totalUpstreams--
-		// } else {
-		upstream.Weight.Value = uint32(math.Floor(float64(totalWeight) / float64(totalUpstreams)))
-		// }
+		// If weight is passed, then use otherwise calculate
+		if i.Weight != nil {
+			upstream.Weight.Value = uint32(*i.Weight)
+			totalWeight -= *i.Weight
+			totalUpstreams--
+		} else {
+			upstream.Weight.Value = uint32(math.Floor(float64(totalWeight) / float64(totalUpstreams)))
+		}
 
 		upstreams = append(upstreams, &upstream)
 	}

@@ -65,6 +65,8 @@ type Service struct {
 	Name string `json:"name"`
 	// Port (defined as Integer) to proxy traffic to since a service can have multiple defined
 	Port int `json:"port"`
+	// Weight defines percentage of traffic to balance traffic
+	Weight *int `json:"weight"`
 }
 
 // Delegate allows for passing delgating VHosts to other IngressRoutes
