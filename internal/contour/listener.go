@@ -139,26 +139,21 @@ func (lc *ListenerCache) recomputeListener0(ingresses map[metadata]*v1beta1.Ingr
 	}
 }
 
-// recomputeListener recomputes the non SSL listener for port 8080 using the list of ingresses provided.
+// recomputeListener recomputes the non SSL listener for port 8080 using the list of routes provided.
 // recomputeListener returns a slice of listeners to be added to the cache, and a slice of names of listeners
 // to be removed.
-func (lc *ListenerCache) recomputeListenerIngressRoute0(ingresses map[metadata]*ingressroutev1.IngressRoute) ([]*v2.Listener, []string) {
+func (lc *ListenerCache) recomputeListenerIngressRoute0(routes map[metadata]*ingressroutev1.IngressRoute) ([]*v2.Listener, []string) {
 	l := &v2.Listener{
 		Name:    ENVOY_HTTP_LISTENER,
 		Address: socketaddress(lc.httpAddress(), lc.httpPort()),
 	}
 
-	// var valid int
-	// for _, i := range ingresses {
-	// 	if httpAllowed(i) {
-	// 		valid++
-	// 	}
-	// }
-	// if valid > 0 {
-	l.FilterChains = []listener.FilterChain{
-		filterchain(lc.UseProxyProto, httpfilter(ENVOY_HTTP_LISTENER)),
+	if len(routes) > 0 {
+		l.FilterChains = []listener.FilterChain{
+			filterchain(lc.UseProxyProto, httpfilter(ENVOY_HTTP_LISTENER)),
+		}
 	}
-	// }
+
 	// TODO(dfc) some annotations may require the Ingress to no appear on
 	// port 80, therefore may result in an empty effective set of ingresses.
 	switch len(l.FilterChains) {
