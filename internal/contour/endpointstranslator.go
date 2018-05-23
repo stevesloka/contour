@@ -14,9 +14,12 @@
 package contour
 
 import (
+	"fmt"
+
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/endpoint"
+	"github.com/heptio/contour/internal/metrics"
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	_cache "k8s.io/client-go/tools/cache"
@@ -28,6 +31,8 @@ type EndpointsTranslator struct {
 	logrus.FieldLogger
 	clusterLoadAssignmentCache
 	Cond
+	metrics.ContourMetrics
+	ContourInformer _cache.SharedInformer
 }
 
 func (e *EndpointsTranslator) OnAdd(obj interface{}) {
@@ -102,6 +107,8 @@ func (e *EndpointsTranslator) recomputeClusterLoadAssignment(oldep, newep *v1.En
 		}
 	}
 
+	fmt.Println("endpoints: ", newep)
+
 	clas := make(map[string]*v2.ClusterLoadAssignment)
 	// add or update endpoints
 	for _, s := range newep.Subsets {
@@ -148,6 +155,7 @@ func (e *EndpointsTranslator) recomputeClusterLoadAssignment(oldep, newep *v1.En
 			}
 		}
 	}
+
 }
 
 func clusterloadassignment(name string, lbendpoints ...endpoint.LbEndpoint) *v2.ClusterLoadAssignment {

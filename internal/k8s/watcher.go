@@ -51,13 +51,14 @@ func WatchSecrets(g *workgroup.Group, client *kubernetes.Clientset, log logrus.F
 }
 
 // WatchIngressRoutes creates a SharedInformer for contour.heptio.com/v1.IngressRoutes and registers it with g.
-func WatchIngressRoutes(g *workgroup.Group, client *clientset.Clientset, log logrus.FieldLogger, rs ...cache.ResourceEventHandler) {
-	watch(g, client.ContourV1beta1().RESTClient(), log, ingressroutev1.ResourcePlural, new(ingressroutev1.IngressRoute), rs...)
+func WatchIngressRoutes(g *workgroup.Group, client *clientset.Clientset, log logrus.FieldLogger, rs ...cache.ResourceEventHandler) cache.SharedInformer {
+	return watch(g, client.ContourV1beta1().RESTClient(), log, ingressroutev1.ResourcePlural, new(ingressroutev1.IngressRoute), rs...)
 }
 
-func watch(g *workgroup.Group, c cache.Getter, log logrus.FieldLogger, resource string, objType runtime.Object, rs ...cache.ResourceEventHandler) {
+func watch(g *workgroup.Group, c cache.Getter, log logrus.FieldLogger, resource string, objType runtime.Object, rs ...cache.ResourceEventHandler) cache.SharedInformer {
 	lw := cache.NewListWatchFromClient(c, resource, v1.NamespaceAll, fields.Everything())
 	sw := cache.NewSharedInformer(lw, objType, time.Duration(0)) // resync timer disabled
+
 	for _, r := range rs {
 		sw.AddEventHandler(r)
 	}
@@ -67,4 +68,6 @@ func watch(g *workgroup.Group, c cache.Getter, log logrus.FieldLogger, resource 
 		defer log.Println("stopped")
 		sw.Run(stop)
 	})
+
+	return sw
 }

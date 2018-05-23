@@ -17,12 +17,14 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 
 	"github.com/heptio/contour/internal/debug"
 	clientset "github.com/heptio/contour/internal/generated/clientset/versioned"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 
 	"k8s.io/client-go/kubernetes"
@@ -33,6 +35,7 @@ import (
 	"github.com/heptio/contour/internal/envoy"
 	"github.com/heptio/contour/internal/grpc"
 	"github.com/heptio/contour/internal/k8s"
+	"github.com/heptio/contour/internal/metrics"
 	"github.com/heptio/contour/internal/workgroup"
 
 	"github.com/sirupsen/logrus"
@@ -87,6 +90,9 @@ func main() {
 	serve.Flag("debug address", "address the /debug/pprof endpoint will bind too").Default("127.0.0.1").StringVar(&debug.Addr)
 	serve.Flag("debug port", "port the /debug/pprof endpoint will bind too").Default("8000").IntVar(&debug.Port)
 
+	// prometheus configuration
+	prometheusPort := serve.Flag("prometheus-port", "listen port for prometheus").Default("8085").Int()
+
 	// translator configuration
 	serve.Flag("envoy-http-access-log", "Envoy HTTP access log").Default(contour.DEFAULT_HTTP_ACCESS_LOG).StringVar(&t.HTTPAccessLog)
 	serve.Flag("envoy-https-access-log", "Envoy HTTPS access log").Default(contour.DEFAULT_HTTPS_ACCESS_LOG).StringVar(&t.HTTPSAccessLog)
@@ -132,12 +138,17 @@ func main() {
 		k8s.WatchServices(&g, client, wl, buf)
 		k8s.WatchIngress(&g, client, wl, buf)
 		k8s.WatchSecrets(&g, client, wl, buf)
-		k8s.WatchIngressRoutes(&g, contourClient, wl, buf)
+		ingressRouteInformer := k8s.WatchIngressRoutes(&g, contourClient, wl, buf)
+
+		// initalize prometheus metrics
+		metrics := metrics.NewMetrics(wl)
 
 		// Endpoints updates are handled directly by the EndpointsTranslator
 		// due to their high update rate and their orthogonal nature.
 		et := &contour.EndpointsTranslator{
-			FieldLogger: log.WithField("context", "endpointstranslator"),
+			FieldLogger:     log.WithField("context", "endpointstranslator"),
+			ContourMetrics:  metrics,
+			ContourInformer: ingressRouteInformer,
 		}
 		k8s.WatchEndpoints(&g, client, wl, et)
 
@@ -156,6 +167,17 @@ func main() {
 			defer log.Println("stopped")
 			s.Serve(l)
 		})
+
+		go func() {
+			// Expose the registered metrics via HTTP.
+			http.Handle("/metrics", promhttp.Handler())
+			srv := &http.Server{Addr: fmt.Sprintf(":%d", *prometheusPort)}
+			wl := log.WithField("context", "serve").WithField("resource", "prometheus")
+			wl.Info("prometheus listen port: ", *prometheusPort)
+			if err := srv.ListenAndServe(); err != nil {
+				log.Fatal(err)
+			}
+		}()
 
 		g.Run()
 	default:
