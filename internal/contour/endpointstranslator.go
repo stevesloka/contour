@@ -19,9 +19,11 @@ import (
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/endpoint"
+	listers "github.com/heptio/contour/internal/generated/listers/contour/v1beta1"
 	"github.com/heptio/contour/internal/metrics"
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	_cache "k8s.io/client-go/tools/cache"
 )
 
@@ -32,7 +34,7 @@ type EndpointsTranslator struct {
 	clusterLoadAssignmentCache
 	Cond
 	metrics.ContourMetrics
-	ContourInformer _cache.SharedInformer
+	ContourLister listers.IngressRouteLister
 }
 
 func (e *EndpointsTranslator) OnAdd(obj interface{}) {
@@ -107,7 +109,9 @@ func (e *EndpointsTranslator) recomputeClusterLoadAssignment(oldep, newep *v1.En
 		}
 	}
 
-	fmt.Println("endpoints: ", newep)
+	if newep.ObjectMeta.Namespace != "kube-system" {
+		fmt.Println("endpoints: ", newep)
+	}
 
 	clas := make(map[string]*v2.ClusterLoadAssignment)
 	// add or update endpoints
@@ -152,6 +156,23 @@ func (e *EndpointsTranslator) recomputeClusterLoadAssignment(oldep, newep *v1.En
 			if _, ok := clas[name]; !ok {
 				// port is not present in the list added / updated, so remove it
 				e.Remove(servicename(oldep.ObjectMeta, name))
+			}
+		}
+	}
+
+	// Write metrics
+
+	// Determine which IngressRoutes this enddpoint matches
+	ingressRoutes, err := e.ContourLister.IngressRoutes(newep.ObjectMeta.GetNamespace()).List(labels.Everything())
+
+	if err != nil {
+		for _, ig := range ingressRoutes {
+			for _, route := range ig.Spec.Routes {
+				for _, svc := range route.Services {
+					if svc.Name == newep.GetName() {
+						e.ContourMetrics.IngressRouteUpstreamEndpointsTotalMetric(newep.ObjectMeta.Namespace, ig.GetName(), newep)
+					}
+				}
 			}
 		}
 	}

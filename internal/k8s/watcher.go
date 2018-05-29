@@ -17,7 +17,7 @@ package k8s
 import (
 	"time"
 
-	ingressroutev1 "github.com/heptio/contour/apis/contour/v1beta1"
+	ingressroutev1beta1 "github.com/heptio/contour/apis/contour/v1beta1"
 	clientset "github.com/heptio/contour/internal/generated/clientset/versioned"
 	"github.com/heptio/contour/internal/workgroup"
 	"github.com/sirupsen/logrus"
@@ -52,7 +52,7 @@ func WatchSecrets(g *workgroup.Group, client *kubernetes.Clientset, log logrus.F
 
 // WatchIngressRoutes creates a SharedInformer for contour.heptio.com/v1.IngressRoutes and registers it with g.
 func WatchIngressRoutes(g *workgroup.Group, client *clientset.Clientset, log logrus.FieldLogger, rs ...cache.ResourceEventHandler) cache.SharedInformer {
-	return watch(g, client.ContourV1beta1().RESTClient(), log, ingressroutev1.ResourcePlural, new(ingressroutev1.IngressRoute), rs...)
+	return watch(g, client.ContourV1beta1().RESTClient(), log, ingressroutev1beta1.ResourcePlural, new(ingressroutev1beta1.IngressRoute), rs...)
 }
 
 func watch(g *workgroup.Group, c cache.Getter, log logrus.FieldLogger, resource string, objType runtime.Object, rs ...cache.ResourceEventHandler) cache.SharedInformer {
@@ -71,3 +71,20 @@ func watch(g *workgroup.Group, c cache.Getter, log logrus.FieldLogger, resource 
 
 	return sw
 }
+
+// func watchingressroute(g *workgroup.Group, c *clientset.Clientset, log logrus.FieldLogger, resource string, objType runtime.Object, rs ...cache.ResourceEventHandler) contourinformer.IngressRouteInformer {
+// 	//lw := contourinformer..  cache.NewListWatchFromClient(c, resource, v1.NamespaceAll, fields.Everything())
+// 	sw := contourinformer.NewIngressRouteInformer(c, "", time.Duration(0), nil) // resync timer disabled
+
+// 	for _, r := range rs {
+// 		sw.AddEventHandler(r)
+// 	}
+// 	g.Add(func(stop <-chan struct{}) {
+// 		log := log.WithField("resource", resource)
+// 		log.Println("started")
+// 		defer log.Println("stopped")
+// 		sw.Run(stop)
+// 	})
+
+// 	return sw
+// }

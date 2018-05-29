@@ -24,6 +24,7 @@ import (
 
 	"github.com/heptio/contour/internal/debug"
 	clientset "github.com/heptio/contour/internal/generated/clientset/versioned"
+	informers "github.com/heptio/contour/internal/generated/informers/externalversions/contour/v1beta1"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 
@@ -148,7 +149,7 @@ func main() {
 		et := &contour.EndpointsTranslator{
 			FieldLogger:     log.WithField("context", "endpointstranslator"),
 			ContourMetrics:  metrics,
-			ContourInformer: ingressRouteInformer,
+			ContourInformer: ingressRouteInformer.
 		}
 		k8s.WatchEndpoints(&g, client, wl, et)
 

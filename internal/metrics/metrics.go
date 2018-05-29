@@ -16,6 +16,7 @@ package metrics
 import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
+	"k8s.io/api/core/v1"
 )
 
 // ContourMetrics provide Prometheus metrics for contour
@@ -77,9 +78,15 @@ func (c *ContourMetrics) RegisterPrometheus() {
 }
 
 // IngressRouteUpstreamEndpointsTotalMetric formats a total endpoint prometheus metric
-func (c *ContourMetrics) IngressRouteUpstreamEndpointsTotalMetric(namespace, name string, totalEndpoints int) {
+func (c *ContourMetrics) IngressRouteUpstreamEndpointsTotalMetric(namespace, name string, endpoint *v1.Endpoints) {
 	m, ok := c.metrics[IngressRouteUpstreamEndpointsTotal].(*prometheus.GaugeVec)
 	if ok {
+		// Calculate total endpoints
+		totalEndpoints := 0
+		for _, i := range endpoint.Subsets {
+			totalEndpoints += len(i.Addresses)
+		}
+
 		m.WithLabelValues(namespace, name).Set(float64(totalEndpoints))
 	} else {
 		c.log.Errorln("Could not get ref to 'IngressRouteUpstreamEndpointsTotal' metric")
