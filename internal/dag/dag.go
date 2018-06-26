@@ -25,6 +25,7 @@ import (
 
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
 	ingressroutev1 "github.com/heptio/contour/apis/contour/v1beta1"
+	k8s "github.com/heptio/contour/internal/k8s"
 )
 
 // A DAG represents a directed acylic graph of objects representing the relationship
@@ -37,6 +38,8 @@ type DAG struct {
 	ingressroutes map[meta]*ingressroutev1.IngressRoute
 	secrets       map[meta]*v1.Secret
 	services      map[meta]*v1.Service
+
+	IngressRouteStatus *k8s.IngressRouteStatus
 
 	dag *dag
 }
@@ -350,6 +353,10 @@ func (d *DAG) recompute() *dag {
 			}
 			vhost(host, 80).routes[r.path] = r
 		}
+
+		// TODO: This is just an example!
+		// Set status on IngressRoute
+		d.IngressRouteStatus.SetValidStatus("valid ingress root", calculatePath(ir), ir)
 	}
 
 	_d := new(dag)
@@ -487,4 +494,17 @@ func (s *Secret) toMeta() meta {
 		name:      s.object.Name,
 		namespace: s.object.Namespace,
 	}
+}
+
+func calculatePath(ir *ingressroutev1.IngressRoute) []string {
+	paths := []string{}
+
+	for _, route := range ir.Spec.Routes {
+		paths = append(paths, ir.Spec.VirtualHost.Fqdn+route.Match)
+		for _, alias := range ir.Spec.VirtualHost.Aliases {
+			paths = append(paths, alias+route.Match)
+		}
+	}
+
+	return paths
 }

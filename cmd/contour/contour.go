@@ -129,6 +129,9 @@ func main() {
 		// in kingpin. See #371
 		flag.Parse()
 		client, contourClient := newClient(*kubeconfig, *inCluster)
+		dagrh.IngressRouteStatus = &k8s.IngressRouteStatus{
+			Client: contourClient,
+		}
 
 		wl := log.WithField("context", "watch")
 		k8s.WatchServices(&g, client, wl, t, &da)
