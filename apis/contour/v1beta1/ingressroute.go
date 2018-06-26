@@ -77,6 +77,14 @@ type Delegate struct {
 	Namespace string `json:"namespace"`
 }
 
+// Status reports the current state of the IngressRoute
+type Status struct {
+	CurrentStatus   string      `json:"currentStatus"`
+	Description     string      `json:"description"`
+	LastProcessTime metav1.Time `json:"lastProcessTime"`
+	Paths           []string    `json:"paths"`
+}
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -85,7 +93,8 @@ type IngressRoute struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 
-	Spec IngressRouteSpec `json:"spec"`
+	Spec   IngressRouteSpec `json:"spec"`
+	Status `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
