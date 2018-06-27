@@ -2136,6 +2136,10 @@ func TestDAGRemove(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			var d DAG
+			fakeClient := fake.NewSimpleClientset()
+			d.IngressRouteStatus = &k8s.IngressRouteStatus{
+				Client: fakeClient,
+			}
 			for _, o := range tc.insert {
 				d.Insert(o)
 			}
