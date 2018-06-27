@@ -67,6 +67,22 @@ type Service struct {
 	Port int `json:"port"`
 	// Weight defines percentage of traffic to balance traffic
 	Weight *int `json:"weight"`
+	// HealthCheck defines optional healthchecks on the upstream service
+	HealthCheck *HealthCheck `json:"lbHealthCheck"`
+}
+
+// HealthCheck defines optional healthchecks on the upstream service
+type HealthCheck struct {
+	// HTTP endpoint used to perform health checks on upstream service
+	Path string `json:"path"`
+	// The interval (seconds) between health checks
+	IntervalSeconds int `json:"intervalSeconds"`
+	// The time to wait (seconds) for a health check response
+	TimeoutSeconds int `json:"timeoutSeconds"`
+	// The number of unhealthy health checks required before a host is marked unhealthy
+	UnhealthyThresholdCount int `json:"unhealthyThresholdCount"`
+	// The number of healthy health checks required before a host is marked healthy
+	HealthyThresholdCount int `json:"healthyThresholdCount"`
 }
 
 // Delegate allows for passing delgating VHosts to other IngressRoutes

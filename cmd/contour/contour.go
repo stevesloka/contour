@@ -133,6 +133,8 @@ func main() {
 			Client: contourClient,
 		}
 
+		t.ClusterCache.Client = client
+
 		wl := log.WithField("context", "watch")
 		k8s.WatchServices(&g, client, wl, t, &da)
 		k8s.WatchIngress(&g, client, wl, t, &da)

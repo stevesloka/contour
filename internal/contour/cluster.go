@@ -14,6 +14,7 @@
 package contour
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -21,7 +22,13 @@ import (
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
 	v2cluster "github.com/envoyproxy/go-control-plane/envoy/api/v2/cluster"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
+	envoy_api_v2_core4 "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
+	google_protobuf "github.com/gogo/protobuf/types"
+	google_protobuf2 "github.com/gogo/protobuf/types"
+	ingressroutev1 "github.com/heptio/contour/apis/contour/v1beta1"
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -36,6 +43,7 @@ const (
 type ClusterCache struct {
 	clusterCache
 	Cond
+	Client kubernetes.Interface
 }
 
 // recomputeService recomputes SDS cache entries, adding, updating, or removing
@@ -53,7 +61,7 @@ type ClusterCache struct {
 // names come in the form NAMESPACE / NAME / SERVICEPORT NAME. However SERVICEPORT NAME
 // may be blank, and so both the SERVICEPORT NAME component and the preceeding slash may
 // be elided in the case that there is a single, unnamed, service port in the spec.
-func (cc *ClusterCache) recomputeService(oldsvc, newsvc *v1.Service) {
+func (cc *ClusterCache) recomputeService(oldsvc, newsvc *v1.Service, hc *ingressroutev1.HealthCheck) {
 	if oldsvc == newsvc {
 		// skip if oldsvc & newsvc == nil, or are the same object.
 		return
@@ -96,7 +104,7 @@ func (cc *ClusterCache) recomputeService(oldsvc, newsvc *v1.Service) {
 			if p.Name != "" {
 				// service port is named, so we must generate both a cluster for the port name
 				// and a cluster for the port number.
-				c := edscluster(newsvc, p.Name, up[p.Name], config)
+				c := edscluster(newsvc, p.Name, up[p.Name], config, hc)
 				cc.Add(c)
 				// it is safe to use p.Name as the key because the API server enforces
 				// the invariant that Name will only be blank if there is a single port
@@ -105,7 +113,7 @@ func (cc *ClusterCache) recomputeService(oldsvc, newsvc *v1.Service) {
 				named[p.Name] = p
 			}
 			portString := strconv.Itoa(int(p.Port))
-			c := edscluster(newsvc, portString, up[portString], config)
+			c := edscluster(newsvc, portString, up[portString], config, hc)
 			cc.Add(c)
 			unnamed[p.Port] = p
 		default:
@@ -130,7 +138,20 @@ func (cc *ClusterCache) recomputeService(oldsvc, newsvc *v1.Service) {
 	}
 }
 
-func edscluster(svc *v1.Service, portString, upstreamProtocol string, config *v2.Cluster_EdsClusterConfig) *v2.Cluster {
+func (cc *ClusterCache) recomputehealthcheck(name, namespace string, hc *ingressroutev1.HealthCheck) error {
+	// Get service referenced
+	svc, err := cc.Client.CoreV1().Services(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	// Call recompute
+	cc.recomputeService(nil, svc, hc)
+
+	return nil
+}
+
+func edscluster(svc *v1.Service, portString, upstreamProtocol string, config *v2.Cluster_EdsClusterConfig, hc *ingressroutev1.HealthCheck) *v2.Cluster {
 	cluster := &v2.Cluster{
 		Name:             hashname(60, svc.ObjectMeta.Namespace, svc.ObjectMeta.Name, portString),
 		Type:             v2.Cluster_EDS,
@@ -138,6 +159,13 @@ func edscluster(svc *v1.Service, portString, upstreamProtocol string, config *v2
 		ConnectTimeout:   250 * time.Millisecond,
 		LbPolicy:         v2.Cluster_ROUND_ROBIN,
 	}
+
+	// Set HealthCheck if requested
+	if hc != nil {
+		cluster.HealthChecks = edshealthcheck(hc)
+	}
+
+	fmt.Println(cluster)
 
 	thresholds := &v2cluster.CircuitBreakers_Thresholds{
 		MaxConnections:     parseAnnotationUInt32(svc.Annotations, annotationMaxConnections),
@@ -170,4 +198,26 @@ func edsconfig(source, name string) *v2.Cluster_EdsClusterConfig {
 		EdsConfig:   apiconfigsource(source), // hard coded by initconfig
 		ServiceName: name,
 	}
+}
+
+func edshealthcheck(hc *ingressroutev1.HealthCheck) []*envoy_api_v2_core4.HealthCheck {
+	return []*envoy_api_v2_core4.HealthCheck{{
+		Timeout: &google_protobuf2.Duration{
+			Seconds: 30,
+		},
+		Interval: &google_protobuf2.Duration{
+			Seconds: 5,
+		},
+		UnhealthyThreshold: &google_protobuf.UInt32Value{
+			Value: 5,
+		},
+		HealthyThreshold: &google_protobuf.UInt32Value{
+			Value: 2,
+		},
+		HealthChecker: &envoy_api_v2_core4.HealthCheck_HttpHealthCheck_{
+			HttpHealthCheck: &envoy_api_v2_core4.HealthCheck_HttpHealthCheck{
+				Path: hc.Path,
+			},
+		},
+	}}
 }

@@ -125,15 +125,15 @@ func (t *Translator) OnDelete(obj interface{}) {
 }
 
 func (t *Translator) addService(svc *v1.Service) {
-	t.recomputeService(nil, svc)
+	t.recomputeService(nil, svc, nil)
 }
 
 func (t *Translator) updateService(oldsvc, newsvc *v1.Service) {
-	t.recomputeService(oldsvc, newsvc)
+	t.recomputeService(oldsvc, newsvc, nil)
 }
 
 func (t *Translator) removeService(svc *v1.Service) {
-	t.recomputeService(svc, nil)
+	t.recomputeService(svc, nil, nil)
 }
 
 // ingressClass returns the IngressClass
@@ -214,6 +214,11 @@ func (t *Translator) addIngressRoute(r *ingressroutev1.IngressRoute) {
 	}
 
 	t.recomputevhostIngressRoute(host, t.cache.vhostroutes[host])
+	for _, route := range r.Spec.Routes {
+		for _, svc := range route.Services {
+			t.recomputehealthcheck(r.GetName(), r.GetNamespace(), svc.HealthCheck)
+		}
+	}
 }
 
 func (t *Translator) removeIngressRoute(r *ingressroutev1.IngressRoute) {

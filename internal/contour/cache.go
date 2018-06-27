@@ -14,6 +14,7 @@
 package contour
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2"
@@ -79,6 +80,17 @@ func (cc *clusterCache) Remove(names ...string) {
 	}
 }
 
+// Get returns the named entry from the cache. If the entry
+// is not present in the cache, it returns nil
+func (cc *clusterCache) Get(name string) (cluster *v2.Cluster) {
+	cc.mu.Lock()
+	cluster, _ = cc.entries[name].(*v2.Cluster)
+	cc.mu.Unlock()
+
+	fmt.Println("cluster: ", cluster.GetName())
+	return
+}
+
 // clusterLoadAssignmentCache is a thread safe, atomic, copy on write cache of v2.ClusterLoadAssignment objects.
 type clusterLoadAssignmentCache struct {
 	cache
@@ -92,8 +104,8 @@ func (c *clusterLoadAssignmentCache) Add(assignments ...*v2.ClusterLoadAssignmen
 	}
 }
 
-// Remove removes the named entry from the cache. If the entry
-// is not present in the cache, the operation is a no-op.
+// Get returns the named entry from the cache. If the entry
+// is not present in the cache, the operation returns nil
 func (c *clusterLoadAssignmentCache) Remove(names ...string) {
 	for _, n := range names {
 		c.remove(n)
