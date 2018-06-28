@@ -145,6 +145,7 @@ func (cc *ClusterCache) recomputehealthcheck(name, namespace string, hc *ingress
 		return err
 	}
 	fmt.Println("---------- configuring svc: ", svc.GetName())
+
 	// Call recompute
 	cc.recomputeService(nil, svc, hc)
 
@@ -217,6 +218,7 @@ func edshealthcheck(hc *ingressroutev1.HealthCheck) []*envoy_api_v2_core4.Health
 		HealthChecker: &envoy_api_v2_core4.HealthCheck_HttpHealthCheck_{
 			HttpHealthCheck: &envoy_api_v2_core4.HealthCheck_HttpHealthCheck{
 				Path: hc.Path,
+				Host: "foo",
 			},
 		},
 	}}
