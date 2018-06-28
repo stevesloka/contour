@@ -129,7 +129,7 @@ func main() {
 		// in kingpin. See #371
 		flag.Parse()
 		client, contourClient := newClient(*kubeconfig, *inCluster)
-		dagrh.IngressRouteStatus = &k8s.IngressRouteStatus{
+		da.ResourceEventHandler.DAG.IngressRouteStatus = &k8s.IngressRouteStatus{
 			Client: contourClient,
 		}
 
