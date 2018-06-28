@@ -63,7 +63,6 @@ func (in *IngressRoute) DeepCopyInto(out *IngressRoute) {
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 	in.Spec.DeepCopyInto(&out.Spec)
 	out.Status = in.Status
-	in.Status.DeepCopyInto(&out.Status)
 	return
 }
 
