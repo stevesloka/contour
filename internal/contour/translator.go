@@ -214,9 +214,10 @@ func (t *Translator) addIngressRoute(r *ingressroutev1.IngressRoute) {
 	}
 
 	t.recomputevhostIngressRoute(host, t.cache.vhostroutes[host])
+
 	for _, route := range r.Spec.Routes {
 		for _, svc := range route.Services {
-			t.recomputehealthcheck(r.GetName(), r.GetNamespace(), svc.HealthCheck)
+			t.recomputehealthcheck(svc.Name, r.GetNamespace(), svc.HealthCheck)
 		}
 	}
 }

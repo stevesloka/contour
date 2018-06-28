@@ -144,7 +144,7 @@ func (cc *ClusterCache) recomputehealthcheck(name, namespace string, hc *ingress
 	if err != nil {
 		return err
 	}
-
+	fmt.Println("---------- configuring svc: ", svc.GetName())
 	// Call recompute
 	cc.recomputeService(nil, svc, hc)
 
@@ -203,13 +203,13 @@ func edsconfig(source, name string) *v2.Cluster_EdsClusterConfig {
 func edshealthcheck(hc *ingressroutev1.HealthCheck) []*envoy_api_v2_core4.HealthCheck {
 	return []*envoy_api_v2_core4.HealthCheck{{
 		Timeout: &google_protobuf2.Duration{
-			Seconds: 30,
+			Seconds: 2,
 		},
 		Interval: &google_protobuf2.Duration{
 			Seconds: 5,
 		},
 		UnhealthyThreshold: &google_protobuf.UInt32Value{
-			Value: 5,
+			Value: 2,
 		},
 		HealthyThreshold: &google_protobuf.UInt32Value{
 			Value: 2,
