@@ -79,10 +79,8 @@ type Delegate struct {
 
 // Status reports the current state of the IngressRoute
 type Status struct {
-	CurrentStatus   string      `json:"currentStatus"`
-	Description     string      `json:"description"`
-	LastProcessTime metav1.Time `json:"lastProcessTime"`
-	Paths           []string    `json:"paths"`
+	CurrentStatus string `json:"currentStatus"`
+	Description   string `json:"description"`
 }
 
 // +genclient

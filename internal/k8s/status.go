@@ -33,7 +33,6 @@ func (irs *IngressRouteStatus) SetValidStatus(desc string, paths []string, exist
 	updated.Status = ingressroutev1.Status{
 		CurrentStatus: "valid",
 		Description:   desc,
-		Paths:         paths,
 	}
 
 	return irs.setStatus(paths, existing, updated)
@@ -45,7 +44,6 @@ func (irs *IngressRouteStatus) SetInvalidStatus(desc string, paths []string, exi
 	updated.Status = ingressroutev1.Status{
 		CurrentStatus: "invalid",
 		Description:   desc,
-		Paths:         paths,
 	}
 
 	return irs.setStatus(paths, existing, updated)
