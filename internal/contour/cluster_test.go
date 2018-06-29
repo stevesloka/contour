@@ -361,7 +361,7 @@ func TestClusterCacheRecomputeService(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			var cc ClusterCache
-			cc.recomputeService(tc.oldObj, tc.newObj)
+			cc.recomputeService(tc.oldObj, tc.newObj, nil)
 			got := contents(&cc)
 			sort.Stable(clusterByName(got))
 			if !reflect.DeepEqual(tc.want, got) {

@@ -144,7 +144,6 @@ func (cc *ClusterCache) recomputehealthcheck(name, namespace string, hc *ingress
 	if err != nil {
 		return err
 	}
-	fmt.Println("---------- configuring svc: ", svc.GetName())
 
 	// Call recompute
 	cc.recomputeService(nil, svc, hc)
@@ -202,23 +201,42 @@ func edsconfig(source, name string) *v2.Cluster_EdsClusterConfig {
 }
 
 func edshealthcheck(hc *ingressroutev1.HealthCheck) []*envoy_api_v2_core4.HealthCheck {
+	// Defaults
+	timeout := 2
+	interval := 5
+	unhealthyThreshold := 3
+	healthyThreshold := 2
+
+	if hc.TimeoutSeconds == 0 {
+		timeout = hc.TimeoutSeconds
+	}
+	if hc.IntervalSeconds == 0 {
+		interval = hc.IntervalSeconds
+	}
+	if hc.UnhealthyThresholdCount == 0 {
+		unhealthyThreshold = hc.UnhealthyThresholdCount
+	}
+	if hc.HealthyThresholdCount == 0 {
+		healthyThreshold = hc.HealthyThresholdCount
+	}
+
 	return []*envoy_api_v2_core4.HealthCheck{{
 		Timeout: &google_protobuf2.Duration{
-			Seconds: 2,
+			Seconds: int64(timeout),
 		},
 		Interval: &google_protobuf2.Duration{
-			Seconds: 5,
+			Seconds: int64(interval),
 		},
 		UnhealthyThreshold: &google_protobuf.UInt32Value{
-			Value: 2,
+			Value: uint32(unhealthyThreshold),
 		},
 		HealthyThreshold: &google_protobuf.UInt32Value{
-			Value: 2,
+			Value: uint32(healthyThreshold),
 		},
 		HealthChecker: &envoy_api_v2_core4.HealthCheck_HttpHealthCheck_{
 			HttpHealthCheck: &envoy_api_v2_core4.HealthCheck_HttpHealthCheck{
 				Path: hc.Path,
-				Host: "foo",
+				Host: "contour-envoy-heathcheck",
 			},
 		},
 	}}
