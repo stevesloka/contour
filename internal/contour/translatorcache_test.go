@@ -25,6 +25,7 @@ import (
 	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestTranslatorCacheOnAddIngress(t *testing.T) {
@@ -636,6 +637,9 @@ func TestTranslatorAddIngressRoute(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tr := &Translator{
 				FieldLogger: log,
+				ClusterCache: ClusterCache{
+					Client: fake.NewSimpleClientset(),
+				},
 			}
 			if tc.setup != nil {
 				tc.setup(tr)
@@ -1917,6 +1921,9 @@ func TestTranslatorRemoveIngressRoute(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			tr := &Translator{
 				FieldLogger: log,
+				ClusterCache: ClusterCache{
+					Client: fake.NewSimpleClientset(),
+				},
 			}
 			tc.setup(tr)
 			tr.OnDelete(tc.route)
