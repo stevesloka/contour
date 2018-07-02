@@ -446,6 +446,21 @@ type Route struct {
 
 func (r *Route) Prefix() string { return r.path }
 
+// HealthCheck returns configured healthchecks for a specific service
+func (r *Route) HealthCheck(serivceName string) *ingressroutev1.HealthCheck {
+	switch route := r.object.(type) {
+	case *ingressroutev1.IngressRoute:
+		for _, route := range route.Spec.Routes {
+			for _, service := range route.Services {
+				if service.Name == serivceName {
+					return service.HealthCheck
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (r *Route) addService(s *Service) {
 	if r.services == nil {
 		r.services = make(map[portmeta]*Service)

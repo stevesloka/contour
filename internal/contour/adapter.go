@@ -80,6 +80,7 @@ func (d *DAGAdapter) updateRoutes() {
 func (d *DAGAdapter) updateClusters() {
 	v := cluster.Visitor{
 		ClusterCache: &d.ClusterCache,
+		RouteCache:   &d.RouteCache,
 		DAG:          &d.DAG,
 	}
 	d.ClusterCache.Update(v.Visit())

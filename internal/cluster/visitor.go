@@ -24,10 +24,12 @@ import (
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	"github.com/heptio/contour/internal/dag"
+	"github.com/heptio/contour/internal/route"
 )
 
 type Visitor struct {
 	*ClusterCache
+	*route.RouteCache
 	*dag.DAG
 
 	clusters map[string]*v2.Cluster
@@ -40,7 +42,27 @@ func (v *Visitor) Visit() map[string]*v2.Cluster {
 }
 
 func (v *Visitor) visit(vertex dag.Vertex) {
+
+	// Lookup CDS cluster to get existing HealthCheck / LB Algorithm information
+	// for _, v := range v.ClusterCache.values {
+	// 	if
+	// }
+
+	if ir, ok := vertex.(*dag.Route); ok {
+		fmt.Println("------ ROUTE: ", ir)
+	}
+
 	if service, ok := vertex.(*dag.Service); ok {
+		fmt.Println("------ CLUSTER: ", service.Name())
+
+		// Look through the local RouteCache to find a
+		switch r := vertex.(type) {
+		case *dag.Route:
+			fmt.Println("HERE!!")
+			hc := r.HealthCheck(service.Name())
+			fmt.Println("---- ROUTEHC: ", hc)
+		}
+
 		v.edscluster(service)
 	}
 	// recurse into children of v
