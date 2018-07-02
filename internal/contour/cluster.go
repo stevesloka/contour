@@ -202,36 +202,36 @@ func edsconfig(source, name string) *v2.Cluster_EdsClusterConfig {
 
 func edshealthcheck(hc *ingressroutev1.HealthCheck) []*envoy_api_v2_core4.HealthCheck {
 	// Defaults
-	timeout := 2
-	interval := 5
-	unhealthyThreshold := 3
-	healthyThreshold := 2
+	// timeout := 2
+	// interval := 5
+	// unhealthyThreshold := 3
+	// healthyThreshold := 2
 
-	if hc.TimeoutSeconds == 0 {
-		timeout = hc.TimeoutSeconds
-	}
-	if hc.IntervalSeconds == 0 {
-		interval = hc.IntervalSeconds
-	}
-	if hc.UnhealthyThresholdCount == 0 {
-		unhealthyThreshold = hc.UnhealthyThresholdCount
-	}
-	if hc.HealthyThresholdCount == 0 {
-		healthyThreshold = hc.HealthyThresholdCount
-	}
+	// if hc.TimeoutSeconds == 0 {
+	// 	timeout = hc.TimeoutSeconds
+	// }
+	// if hc.IntervalSeconds == 0 {
+	// 	interval = hc.IntervalSeconds
+	// }
+	// if hc.UnhealthyThresholdCount == 0 {
+	// 	unhealthyThreshold = hc.UnhealthyThresholdCount
+	// }
+	// if hc.HealthyThresholdCount == 0 {
+	// 	healthyThreshold = hc.HealthyThresholdCount
+	// }
 
 	return []*envoy_api_v2_core4.HealthCheck{{
 		Timeout: &google_protobuf2.Duration{
-			Seconds: int64(timeout),
+			Seconds: 2,
 		},
 		Interval: &google_protobuf2.Duration{
-			Seconds: int64(interval),
+			Seconds: 2,
 		},
 		UnhealthyThreshold: &google_protobuf.UInt32Value{
-			Value: uint32(unhealthyThreshold),
+			Value: 2,
 		},
 		HealthyThreshold: &google_protobuf.UInt32Value{
-			Value: uint32(healthyThreshold),
+			Value: 2,
 		},
 		HealthChecker: &envoy_api_v2_core4.HealthCheck_HttpHealthCheck_{
 			HttpHealthCheck: &envoy_api_v2_core4.HealthCheck_HttpHealthCheck{
