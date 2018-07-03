@@ -20,7 +20,8 @@ import (
 
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
-	"github.com/gogo/protobuf/types"
+	envoy_api_v2_core4 "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
+	google_protobuf "github.com/gogo/protobuf/types"
 	ingressroutev1 "github.com/heptio/contour/apis/contour/v1beta1"
 	"github.com/heptio/contour/internal/dag"
 	"k8s.io/api/core/v1"
@@ -281,17 +282,21 @@ func TestClusterVisit(t *testing.T) {
 					},
 					ConnectTimeout: 250 * time.Millisecond,
 					LbPolicy:       v2.Cluster_ROUND_ROBIN,
-					HealthChecks: []*core.HealthCheck{{
-						Timeout:  duration(hcTimeout),
-						Interval: duration(hcInterval),
-						UnhealthyThreshold: &types.UInt32Value{
+					HealthChecks: []*envoy_api_v2_core4.HealthCheck{{
+						Timeout: &google_protobuf.Duration{
+							Seconds: hcTimeout,
+						},
+						Interval: &google_protobuf.Duration{
+							Seconds: hcInterval,
+						},
+						UnhealthyThreshold: &google_protobuf.UInt32Value{
 							Value: hcUnhealthyThreshold,
 						},
-						HealthyThreshold: &types.UInt32Value{
+						HealthyThreshold: &google_protobuf.UInt32Value{
 							Value: hcHealthyThreshold,
 						},
-						HealthChecker: &core.HealthCheck_HttpHealthCheck_{
-							HttpHealthCheck: &core.HealthCheck_HttpHealthCheck{
+						HealthChecker: &envoy_api_v2_core4.HealthCheck_HttpHealthCheck_{
+							HttpHealthCheck: &envoy_api_v2_core4.HealthCheck_HttpHealthCheck{
 								Path: "/healthy",
 								Host: "contour-envoy-heathcheck",
 							},
@@ -322,7 +327,7 @@ func TestClusterVisit(t *testing.T) {
 									IntervalSeconds:         98,
 									UnhealthyThresholdCount: 97,
 									HealthyThresholdCount:   96,
-									Host:                    "foo-bar-host",
+									Host: "foo-bar-host",
 								},
 							}},
 						}},
@@ -345,17 +350,21 @@ func TestClusterVisit(t *testing.T) {
 					},
 					ConnectTimeout: 250 * time.Millisecond,
 					LbPolicy:       v2.Cluster_ROUND_ROBIN,
-					HealthChecks: []*core.HealthCheck{{
-						Timeout:  duration(99 * time.Second),
-						Interval: duration(98 * time.Second),
-						UnhealthyThreshold: &types.UInt32Value{
+					HealthChecks: []*envoy_api_v2_core4.HealthCheck{{
+						Timeout: &google_protobuf.Duration{
+							Seconds: 99,
+						},
+						Interval: &google_protobuf.Duration{
+							Seconds: 98,
+						},
+						UnhealthyThreshold: &google_protobuf.UInt32Value{
 							Value: 97,
 						},
-						HealthyThreshold: &types.UInt32Value{
+						HealthyThreshold: &google_protobuf.UInt32Value{
 							Value: 96,
 						},
-						HealthChecker: &core.HealthCheck_HttpHealthCheck_{
-							HttpHealthCheck: &core.HealthCheck_HttpHealthCheck{
+						HealthChecker: &envoy_api_v2_core4.HealthCheck_HttpHealthCheck_{
+							HttpHealthCheck: &envoy_api_v2_core4.HealthCheck_HttpHealthCheck{
 								Path: "/healthy",
 								Host: "foo-bar-host",
 							},
@@ -654,12 +663,6 @@ func clustermap(clusters ...*v2.Cluster) map[string]*v2.Cluster {
 		m[c.Name] = c
 	}
 	return m
-}
-
-func duration(d time.Duration) *types.Duration {
-	return &types.Duration{
-		Seconds: int64(d / time.Second),
-	}
 }
 
 func TestServiceName(t *testing.T) {

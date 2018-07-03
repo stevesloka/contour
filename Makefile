@@ -21,9 +21,6 @@ check: test vet staticcheck unused
 install:
 	go install -v -tags "oidc gcp" ./...
 
-dep:
-	dep ensure -vendor-only -v
-
 container:
 	docker build . -t $(IMAGE):$(VERSION)
 
