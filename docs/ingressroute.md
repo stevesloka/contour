@@ -13,14 +13,16 @@ The goal of the `IngressRoute` Custom Resource Definition (CRD) is to extend the
 - Validation: Better validation of resources at creation time
 - Annotations: CRDs are a great way to extend the Kubernetes API and avoid the many Annotations that exist with typical Ingress resources
 
-## Root
+## Root / Delegation
 
-The `Root` `IngressRoute` is the top level entry point for a domain and is used at the top level configuration of a cluster's ingress resources. Roots are typically used by Administrators to abstract away functionality from Teams (like TLS secrets) and allow for route delegation which is described in the following section.   
+A core feature of the `IngressRoute` CRD is delegation which follows the working model of DNS. 
+As the owner of a DNS domain, for example .com, I delegate to another nameserver the responsibility for handing the subdomain heptio.com. 
+Any nameserver can hold a record for heptio.com, but without the linkage from the parent .com TLD, its information is unreachable and non authoritative.   
 
-## Delegation
-
-The working model for delegation is DNS. As the owner of a DNS domain, for example .com, I delegate to another nameserver the responsibility for handing the subdomain heptio.com. Any nameserver can hold a record for heptio.com, but without the linkage from the parent .com TLD, its information is unreachable and non authoritative.
-
-Each root of a DAG starts at a virtual host, which describes properties such as the fully qualified name of the virtual host, any aliases of the vhost (for example, a www. prefix), TLS configuration, and possibly global access list details. The vertices of a graph do not contain virtual host information. Instead they are reachable from a root only by delegation. This permits the owner of an ingress root to both delegate the authority to publish a service on a portion of the route space inside a virtual host, and to further delegate authority to publish and delegate.
+The `Root` IngressRoute is the top level entry point for a domain and is used as the top level configuration of a cluster's ingress resources. 
+Each Root IngressRoute starts at a virtual host, which describes properties such as the fully qualified name of the virtual host, any aliases of the vhost (for example, a www. prefix), TLS configuration, and possibly global access list details. 
+The vertices of a graph do not contain virtual host information. Instead they are reachable from a root only by delegation. This permits the owner of an ingress root to both delegate the authority to publish a service on a portion of the route space inside a virtual host, and to further delegate authority to publish and delegate.
 
 In practice the linkage, or delegation, from root to vertex, is performed with a specific type of route action. You can think of it as routing traffic to another ingress route for further processing, instead of routing traffic directly to a service.
+
+#-- Roots are used by Administrators to abstract away functionality from Teams, such as TLS secrets, as well as and allow for route delegation.
