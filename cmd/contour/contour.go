@@ -126,15 +126,17 @@ func main() {
 		// in kingpin. See #371
 		flag.Parse()
 		client, contourClient := newClient(*kubeconfig, *inCluster)
-		da.ResourceEventHandler.DAG.IngressRouteStatus = &k8s.IngressRouteStatus{
-			Client: contourClient,
-		}
 
 		wl := log.WithField("context", "watch")
 		k8s.WatchServices(&g, client, wl, &da)
 		k8s.WatchIngress(&g, client, wl, &da)
 		k8s.WatchSecrets(&g, client, wl, &da)
-		k8s.WatchIngressRoutes(&g, contourClient, wl, &da)
+		lister := k8s.WatchIngressRoutes(&g, contourClient, wl, &da)
+
+		da.ResourceEventHandler.DAG.IngressRouteStatus = &k8s.IngressRouteStatus{
+			Client: contourClient,
+			Lister: lister,
+		}
 
 		// Endpoints updates are handled directly by the EndpointsTranslator
 		// due to their high update rate and their orthogonal nature.
