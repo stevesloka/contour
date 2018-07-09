@@ -131,12 +131,32 @@ func main() {
 		k8s.WatchServices(&g, client, wl, &da)
 		k8s.WatchIngress(&g, client, wl, &da)
 		k8s.WatchSecrets(&g, client, wl, &da)
-		lister := k8s.WatchIngressRoutes(&g, contourClient, wl, &da)
+
+		// ctx, cancelFunc := context.WithCancel(context.Background())
+		lister, _ := k8s.WatchIngressRoutes(&g, contourClient, wl, &da)
 
 		da.IngressRouteStatus = &k8s.IngressRouteStatus{
 			Client: contourClient,
 			Lister: lister,
 		}
+
+		// Sync caches
+		// g.Add(func(stop <-chan struct{}) error {
+		// 	log := log.WithField("context", "informer")
+		// 	log.Println("syncing caches")
+		// 	err := k8s.SyncCaches(stop, hasSynced)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// 	log.Println("caches synced!")
+		// 	<-stop
+		// 	return nil
+		// })
+
+		// k8s.SyncCaches(ctx.Done(), hasSynced)
+
+		// log := log.WithField("context", "informer")
+		// signals.CancelOnShutdown(cancelFunc, log)
 
 		// Endpoints updates are handled directly by the EndpointsTranslator
 		// due to their high update rate and their orthogonal nature.
@@ -174,7 +194,6 @@ func main() {
 			defer log.Println("stopped")
 			return s.Serve(l)
 		})
-
 		g.Run()
 	default:
 		app.Usage(args)

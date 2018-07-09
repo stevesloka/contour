@@ -31,13 +31,17 @@ type IngressRouteStatus struct {
 
 // SetStatus sets the IngressRoute status field to an Valid or Invalid status
 func (irs *IngressRouteStatus) SetStatus(msg, desc string, existing *ingressroutev1.IngressRoute) error {
-	updated := existing.DeepCopy()
-	updated.Status = ingressroutev1.Status{
-		CurrentStatus: msg,
-		Description:   desc,
-	}
 
-	return irs.setStatus(existing, updated)
+	// Check if update needed
+	if existing.CurrentStatus != msg || existing.Description != desc {
+		updated := existing.DeepCopy()
+		updated.Status = ingressroutev1.Status{
+			CurrentStatus: msg,
+			Description:   desc,
+		}
+		return irs.setStatus(existing, updated)
+	}
+	return nil
 }
 
 func (irs *IngressRouteStatus) setStatus(existing, updated *ingressroutev1.IngressRoute) error {

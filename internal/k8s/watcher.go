@@ -15,6 +15,7 @@
 package k8s
 
 import (
+	"fmt"
 	"time"
 
 	ingressroutev1 "github.com/heptio/contour/apis/contour/v1beta1"
@@ -53,8 +54,17 @@ func WatchSecrets(g *workgroup.Group, client *kubernetes.Clientset, log logrus.F
 }
 
 // WatchIngressRoutes creates a SharedInformer for contour.heptio.com/v1.IngressRoutes and registers it with g.
-func WatchIngressRoutes(g *workgroup.Group, client *clientset.Clientset, log logrus.FieldLogger, rs ...cache.ResourceEventHandler) listers.IngressRouteLister {
+func WatchIngressRoutes(g *workgroup.Group, client *clientset.Clientset, log logrus.FieldLogger, rs ...cache.ResourceEventHandler) (listers.IngressRouteLister, cache.InformerSynced) {
 	return watchingressroute(g, client, log, ingressroutev1.ResourcePlural, new(ingressroutev1.IngressRoute), rs...)
+}
+
+// SyncCaches waits for the lister cache to be filled
+func SyncCaches(stopCh <-chan struct{}, ingressRoutesSynced cache.InformerSynced) error {
+	// Wait for the caches to be synced
+	if ok := cache.WaitForCacheSync(stopCh, ingressRoutesSynced); !ok {
+		return fmt.Errorf("failed to wait for backend service caches to sync")
+	}
+	return nil
 }
 
 func watch(g *workgroup.Group, c cache.Getter, log logrus.FieldLogger, resource string, objType runtime.Object, rs ...cache.ResourceEventHandler) {
@@ -72,7 +82,7 @@ func watch(g *workgroup.Group, c cache.Getter, log logrus.FieldLogger, resource 
 	})
 }
 
-func watchingressroute(g *workgroup.Group, c *clientset.Clientset, log logrus.FieldLogger, resource string, objType runtime.Object, rs ...cache.ResourceEventHandler) listers.IngressRouteLister {
+func watchingressroute(g *workgroup.Group, c *clientset.Clientset, log logrus.FieldLogger, resource string, objType runtime.Object, rs ...cache.ResourceEventHandler) (listers.IngressRouteLister, cache.InformerSynced) {
 	ciFactory := contourinformer.NewSharedInformerFactory(c, time.Duration(0)) // resync timer disabled
 	contourInformer := ciFactory.Contour().V1beta1().IngressRoutes()
 
@@ -86,6 +96,5 @@ func watchingressroute(g *workgroup.Group, c *clientset.Clientset, log logrus.Fi
 		contourInformer.Informer().Run(stop)
 		return nil
 	})
-
-	return contourInformer.Lister()
+	return contourInformer.Lister(), contourInformer.Informer().HasSynced
 }
