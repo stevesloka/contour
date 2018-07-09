@@ -29,7 +29,6 @@ import (
 
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
 	ingressroutev1 "github.com/heptio/contour/apis/contour/v1beta1"
-	k8s "github.com/heptio/contour/internal/k8s"
 )
 
 // A DAG represents a directed acylic graph of objects representing the relationship
@@ -48,7 +47,6 @@ type DAG struct {
 	secrets       map[meta]*v1.Secret
 	services      map[meta]*v1.Service
 
-	IngressRouteStatus *k8s.IngressRouteStatus
 	dag
 }
 
@@ -703,6 +701,10 @@ func (irs *IngressrouteStatus) GetStatuses() []Status {
 
 func (irs *IngressrouteStatus) GetVersion() int {
 	return irs.version
+}
+
+func (s *Status) GetObject() *ingressroutev1.IngressRoute {
+	return s.object
 }
 
 func (s *Status) GetStatus() string {

@@ -133,7 +133,7 @@ func main() {
 		k8s.WatchSecrets(&g, client, wl, &da)
 		lister := k8s.WatchIngressRoutes(&g, contourClient, wl, &da)
 
-		da.ResourceEventHandler.DAG.IngressRouteStatus = &k8s.IngressRouteStatus{
+		da.IngressRouteStatus = &k8s.IngressRouteStatus{
 			Client: contourClient,
 			Lister: lister,
 		}
