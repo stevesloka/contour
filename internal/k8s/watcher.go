@@ -19,6 +19,8 @@ import (
 
 	ingressroutev1 "github.com/heptio/contour/apis/contour/v1beta1"
 	clientset "github.com/heptio/contour/internal/generated/clientset/versioned"
+	contourinformer "github.com/heptio/contour/internal/generated/informers/externalversions"
+	listers "github.com/heptio/contour/internal/generated/listers/contour/v1beta1"
 	"github.com/heptio/workgroup"
 	"github.com/sirupsen/logrus"
 
@@ -51,8 +53,8 @@ func WatchSecrets(g *workgroup.Group, client *kubernetes.Clientset, log logrus.F
 }
 
 // WatchIngressRoutes creates a SharedInformer for contour.heptio.com/v1.IngressRoutes and registers it with g.
-func WatchIngressRoutes(g *workgroup.Group, client *clientset.Clientset, log logrus.FieldLogger, rs ...cache.ResourceEventHandler) {
-	watch(g, client.ContourV1beta1().RESTClient(), log, ingressroutev1.ResourcePlural, new(ingressroutev1.IngressRoute), rs...)
+func WatchIngressRoutes(g *workgroup.Group, client *clientset.Clientset, log logrus.FieldLogger, rs ...cache.ResourceEventHandler) listers.IngressRouteLister {
+	return watchingressroute(g, client, log, ingressroutev1.ResourcePlural, new(ingressroutev1.IngressRoute), rs...)
 }
 
 func watch(g *workgroup.Group, c cache.Getter, log logrus.FieldLogger, resource string, objType runtime.Object, rs ...cache.ResourceEventHandler) {
@@ -68,4 +70,22 @@ func watch(g *workgroup.Group, c cache.Getter, log logrus.FieldLogger, resource 
 		sw.Run(stop)
 		return nil
 	})
+}
+
+func watchingressroute(g *workgroup.Group, c *clientset.Clientset, log logrus.FieldLogger, resource string, objType runtime.Object, rs ...cache.ResourceEventHandler) listers.IngressRouteLister {
+	ciFactory := contourinformer.NewSharedInformerFactory(c, time.Duration(0)) // resync timer disabled
+	contourInformer := ciFactory.Contour().V1beta1().IngressRoutes()
+
+	for _, r := range rs {
+		contourInformer.Informer().AddEventHandler(r)
+	}
+	g.Add(func(stop <-chan struct{}) error {
+		log := log.WithField("resource", resource)
+		log.Println("started")
+		defer log.Println("stopped")
+		contourInformer.Informer().Run(stop)
+		return nil
+	})
+
+	return contourInformer.Lister()
 }
