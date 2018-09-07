@@ -178,6 +178,27 @@ func (s *Service) Name() string       { return s.Object.Name }
 func (s *Service) Namespace() string  { return s.Object.Namespace }
 func (s *Service) Visit(func(Vertex)) {}
 
+func (in *Service) DeepCopy() *Service {
+	if in == nil {
+		return nil
+	}
+
+	out := &Service{
+		Object:               in.Object,
+		ServicePort:          in.ServicePort,
+		Weight:               in.Weight,
+		Protocol:             in.Protocol,
+		HealthCheck:          in.HealthCheck,
+		LoadBalancerStrategy: in.LoadBalancerStrategy,
+		MaxConnections:       in.MaxConnections,
+		MaxPendingRequests:   in.MaxPendingRequests,
+		MaxRequests:          in.MaxRequests,
+		MaxRetries:           in.MaxRetries,
+	}
+
+	return out
+}
+
 type servicemeta struct {
 	name      string
 	namespace string

@@ -45,6 +45,7 @@ type KubernetesCache struct {
 	ingressroutes map[meta]*ingressroutev1.IngressRoute
 	secrets       map[meta]*v1.Secret
 	services      map[meta]*v1.Service
+	edgeServices  map[string]*v1.Service
 }
 
 // meta holds the name and namespace of a Kubernetes object.
@@ -76,6 +77,14 @@ func (kc *KubernetesCache) Insert(obj interface{}) {
 			kc.services = make(map[meta]*v1.Service)
 		}
 		kc.services[m] = obj
+
+		// Check for Edge Envoys
+		if len(obj.Labels["gimbal.heptio.com/edgeProxy"]) > 0 {
+			if kc.edgeServices == nil {
+				kc.edgeServices = make(map[string]*v1.Service)
+			}
+			kc.edgeServices[obj.Labels["gimbal.heptio.com/backend"]] = obj
+		}
 	case *v1beta1.Ingress:
 		m := meta{name: obj.Name, namespace: obj.Namespace}
 		if kc.ingresses == nil {
@@ -114,6 +123,8 @@ func (kc *KubernetesCache) remove(obj interface{}) {
 	case *v1.Service:
 		m := meta{name: obj.Name, namespace: obj.Namespace}
 		delete(kc.services, m)
+
+		// TODO (SAS): Handle deleting edge proxies!
 	case *v1beta1.Ingress:
 		m := meta{name: obj.Name, namespace: obj.Namespace}
 		delete(kc.ingresses, m)
@@ -128,11 +139,12 @@ func (kc *KubernetesCache) remove(obj interface{}) {
 // A Builder builds a *DAGs
 type Builder struct {
 	KubernetesCache
+	ConfigMode string
 }
 
 // Build builds a new *DAG.
 func (b *Builder) Build() *DAG {
-	builder := &builder{source: b}
+	builder := &builder{source: b, configMode: b.ConfigMode}
 	return builder.compute()
 }
 
@@ -149,6 +161,8 @@ type builder struct {
 	orphaned map[meta]bool
 
 	statuses []Status
+
+	configMode string
 }
 
 // lookupService returns a Service that matches the meta and port supplied.
@@ -173,6 +187,16 @@ func (b *builder) lookupService(m meta, port intstr.IntOrString, weight int) *Se
 		}
 	}
 	return nil
+}
+
+// lookupServiceEdge returns a Service that matches the meta and port supplied and is an edge proxy
+// If no matching Service is found lookup returns empty string.
+func (b *builder) lookupServiceEdge(name string) (string, string) {
+	svc, ok := b.source.edgeServices[name]
+	if !ok {
+		return "", ""
+	}
+	return svc.Name, svc.Namespace
 }
 
 func (b *builder) addService(svc *v1.Service, port *v1.ServicePort, weight int) *Service {
@@ -507,6 +531,9 @@ func (b *builder) processIngressRoute(ir *ingressroutev1.IngressRoute, prefixMat
 				Websocket:    route.EnableWebsockets,
 				HTTPSUpgrade: enforceTLSRoute,
 			}
+
+			// var rEdge *Route // TODO (SAS): Make this a slice
+
 			for _, s := range route.Services {
 				if s.Port < 1 || s.Port > 65535 {
 					b.setStatus(Status{Object: ir, Status: StatusInvalid, Description: fmt.Sprintf("route %q: service %q: port must be in the range 1-65535", route.Match, s.Name), Vhost: host})
@@ -517,13 +544,54 @@ func (b *builder) processIngressRoute(ir *ingressroutev1.IngressRoute, prefixMat
 					return
 				}
 				m := meta{name: s.Name, namespace: ir.Namespace}
+
 				if svc := b.lookupService(m, intstr.FromInt(s.Port), s.Weight); svc != nil {
-					r.addService(svc, s.HealthCheck, s.Strategy)
+
+					switch b.configMode {
+					case "default":
+						r.addService(svc, s.HealthCheck, s.Strategy)
+						break
+					case "gimbal":
+						// Check if the service we're proxying to is one that's in a different cluster
+						if len(svc.Object.Labels["gimbal.heptio.com/backend"]) > 0 {
+
+							// Lookup the edge service name
+							name, namespace := b.lookupServiceEdge(svc.Object.Labels["gimbal.heptio.com/backend"])
+
+							mEdge := meta{name: name, namespace: namespace}
+
+							if svcEdge := b.lookupService(mEdge, intstr.FromInt(s.Port), s.Weight); svcEdge != nil {
+								r.addService(svcEdge, s.HealthCheck, s.Strategy)
+								s.Name = name
+							}
+
+						} else {
+							r.addService(svc, s.HealthCheck, s.Strategy)
+						}
+						break
+					case "edge":
+						// TODO: Strip the backend name from the service
+						// Convention is the service is "backend-serviceName" so we'll trim off the backendname since that doesn't exist
+						// in the upstream cluster for the edge envoy routing
+
+						break
+					}
+
 				}
 			}
 
 			b.lookupVirtualHost(host, 80).addRoute(r)
 			b.lookupSecureVirtualHost(host, 443).addRoute(r)
+
+			// // If we need to setup an additional Edge Route, then add now
+			// if rEdge != nil {
+			// 	fmt.Println("----- Setting up the edge route")
+			// 	b.lookupVirtualHost(host, 80).addRoute(rEdge)
+			// 	b.lookupSecureVirtualHost(host, 443).addRoute(rEdge)
+			// } else {
+			// 	fmt.Println("--------- ITS NOT NIL")
+			// }
+
 			continue
 		}
 

@@ -34,6 +34,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/heptio/contour/internal/contour"
+	"github.com/heptio/contour/internal/dag"
 	"github.com/heptio/contour/internal/envoy"
 	"github.com/heptio/contour/internal/grpc"
 	"github.com/heptio/contour/internal/k8s"
@@ -42,7 +43,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var ingressrouteRootNamespaceFlag string
+var (
+	ingressrouteRootNamespaceFlag string
+)
 
 func main() {
 	log := logrus.StandardLogger()
@@ -80,6 +83,7 @@ func main() {
 	kubeconfig := serve.Flag("kubeconfig", "path to kubeconfig (if not in running inside a cluster)").Default(filepath.Join(os.Getenv("HOME"), ".kube", "config")).String()
 	xdsAddr := serve.Flag("xds-address", "xDS gRPC API address").Default("127.0.0.1").String()
 	xdsPort := serve.Flag("xds-port", "xDS gRPC API port").Default("8001").Int()
+	contourConfigMode := serve.Flag("config-mode", "Mode Contour should configure edge proxies or standalone").Default("default").String()
 
 	ch := contour.CacheHandler{
 		FieldLogger: log.WithField("context", "CacheHandler"),
@@ -163,6 +167,9 @@ func main() {
 		flag.Parse()
 
 		reh.IngressRouteRootNamespaces = parseRootNamespaces(ingressrouteRootNamespaceFlag)
+		reh.Builder = dag.Builder{
+			ConfigMode: *contourConfigMode,
+		}
 
 		client, contourClient := newClient(*kubeconfig, *inCluster)
 
