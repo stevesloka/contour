@@ -570,10 +570,16 @@ func (b *builder) processIngressRoute(ir *ingressroutev1.IngressRoute, prefixMat
 						}
 						break
 					case "edge":
-						// TODO: Strip the backend name from the service
-						// Convention is the service is "backend-serviceName" so we'll trim off the backendname since that doesn't exist
-						// in the upstream cluster for the edge envoy routing
-
+						if len(svc.Object.Labels["gimbal.heptio.com/backend"]) > 0 {
+							// TODO: Strip the backend name from the service
+							// Convention is the service is "backend-serviceName" so we'll trim off the backendname since that doesn't exist
+							// in the upstream cluster for the edge envoy routing
+							backendName := svc.Object.Labels["gimbal.heptio.com/backend"]
+							svcName := strings.TrimPrefix(svc.Object.Name, fmt.Sprintf("%s-", backendName))
+							svc.Object.Name = svcName
+							s.Name = svcName
+							r.addService(svc, s.HealthCheck, s.Strategy)
+						}
 						break
 					}
 
@@ -582,16 +588,6 @@ func (b *builder) processIngressRoute(ir *ingressroutev1.IngressRoute, prefixMat
 
 			b.lookupVirtualHost(host, 80).addRoute(r)
 			b.lookupSecureVirtualHost(host, 443).addRoute(r)
-
-			// // If we need to setup an additional Edge Route, then add now
-			// if rEdge != nil {
-			// 	fmt.Println("----- Setting up the edge route")
-			// 	b.lookupVirtualHost(host, 80).addRoute(rEdge)
-			// 	b.lookupSecureVirtualHost(host, 443).addRoute(rEdge)
-			// } else {
-			// 	fmt.Println("--------- ITS NOT NIL")
-			// }
-
 			continue
 		}
 

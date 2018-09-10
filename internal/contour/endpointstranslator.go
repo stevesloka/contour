@@ -14,6 +14,9 @@
 package contour
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/endpoint"
@@ -119,7 +122,16 @@ func (e *EndpointsTranslator) recomputeClusterLoadAssignment(oldep, newep *v1.En
 			portname := p.Name
 			cla, ok := clas[portname]
 			if !ok {
-				cla = clusterloadassignment(servicename(newep.ObjectMeta.Namespace, newep.ObjectMeta.Name, portname))
+				name := newep.ObjectMeta.Name
+				if len(newep.Labels["gimbal.heptio.com/backend"]) > 0 && newep.Namespace != "gimbal-contour" {
+					// TODO: Strip the backend name from the service
+					// Convention is the service is "backend-serviceName" so we'll trim off the backendname since that doesn't exist
+					// in the upstream cluster for the edge envoy routing
+					backendName := newep.Labels["gimbal.heptio.com/backend"]
+					name = strings.TrimPrefix(newep.Name, fmt.Sprintf("%s-", backendName))
+				}
+
+				cla = clusterloadassignment(servicename(newep.ObjectMeta.Namespace, name, portname))
 				clas[portname] = cla
 			}
 			for _, a := range s.Addresses {
