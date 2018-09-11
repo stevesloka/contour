@@ -139,12 +139,13 @@ func (kc *KubernetesCache) remove(obj interface{}) {
 // A Builder builds a *DAGs
 type Builder struct {
 	KubernetesCache
-	ConfigMode string
+	ConfigMode  string
+	BackendName string
 }
 
 // Build builds a new *DAG.
 func (b *Builder) Build() *DAG {
-	builder := &builder{source: b, configMode: b.ConfigMode}
+	builder := &builder{source: b, configMode: b.ConfigMode, backendName: b.BackendName}
 	return builder.compute()
 }
 
@@ -162,7 +163,8 @@ type builder struct {
 
 	statuses []Status
 
-	configMode string
+	configMode  string
+	backendName string
 }
 
 // lookupService returns a Service that matches the meta and port supplied.
@@ -532,8 +534,6 @@ func (b *builder) processIngressRoute(ir *ingressroutev1.IngressRoute, prefixMat
 				HTTPSUpgrade: enforceTLSRoute,
 			}
 
-			// var rEdge *Route // TODO (SAS): Make this a slice
-
 			for _, s := range route.Services {
 				if s.Port < 1 || s.Port > 65535 {
 					b.setStatus(Status{Object: ir, Status: StatusInvalid, Description: fmt.Sprintf("route %q: service %q: port must be in the range 1-65535", route.Match, s.Name), Vhost: host})
@@ -555,14 +555,19 @@ func (b *builder) processIngressRoute(ir *ingressroutev1.IngressRoute, prefixMat
 						// Check if the service we're proxying to is one that's in a different cluster
 						if len(svc.Object.Labels["gimbal.heptio.com/backend"]) > 0 {
 
+							fmt.Println(fmt.Sprintf("----- backend: %s, %s", svc.Object.Labels["gimbal.heptio.com/backend"], svc.Name()))
+
 							// Lookup the edge service name
 							name, namespace := b.lookupServiceEdge(svc.Object.Labels["gimbal.heptio.com/backend"])
 
 							mEdge := meta{name: name, namespace: namespace}
 
 							if svcEdge := b.lookupService(mEdge, intstr.FromInt(s.Port), s.Weight); svcEdge != nil {
+								fmt.Println("------ found envoy service! ", svcEdge.Name())
 								r.addService(svcEdge, s.HealthCheck, s.Strategy)
 								s.Name = name
+							} else {
+								fmt.Println("------ DID NOT FIND IT! ")
 							}
 
 						} else {
@@ -571,14 +576,17 @@ func (b *builder) processIngressRoute(ir *ingressroutev1.IngressRoute, prefixMat
 						break
 					case "edge":
 						if len(svc.Object.Labels["gimbal.heptio.com/backend"]) > 0 {
-							// TODO: Strip the backend name from the service
-							// Convention is the service is "backend-serviceName" so we'll trim off the backendname since that doesn't exist
-							// in the upstream cluster for the edge envoy routing
-							backendName := svc.Object.Labels["gimbal.heptio.com/backend"]
-							svcName := strings.TrimPrefix(svc.Object.Name, fmt.Sprintf("%s-", backendName))
-							svc.Object.Name = svcName
-							s.Name = svcName
-							r.addService(svc, s.HealthCheck, s.Strategy)
+							// Make sure routes only get configured to this edge
+							if b.backendName == svc.Object.Labels["gimbal.heptio.com/backend"] {
+								// TODO: Strip the backend name from the service
+								// Convention is the service is "backend-serviceName" so we'll trim off the backendname since that doesn't exist
+								// in the upstream cluster for the edge envoy routing
+								backendName := svc.Object.Labels["gimbal.heptio.com/backend"]
+								svcName := strings.TrimPrefix(svc.Object.Name, fmt.Sprintf("%s-", backendName))
+								svc.Object.Name = svcName
+								s.Name = svcName
+								r.addService(svc, s.HealthCheck, s.Strategy)
+							}
 						}
 						break
 					}

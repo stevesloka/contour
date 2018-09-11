@@ -84,6 +84,7 @@ func main() {
 	xdsAddr := serve.Flag("xds-address", "xDS gRPC API address").Default("127.0.0.1").String()
 	xdsPort := serve.Flag("xds-port", "xDS gRPC API port").Default("8001").Int()
 	contourConfigMode := serve.Flag("config-mode", "Mode Contour should configure edge proxies or standalone").Default("default").String()
+	backendName := serve.Flag("backend-name", "Name of backend cluster to configure this instance of Contour, only applies to an Edge configuration").String()
 
 	ch := contour.CacheHandler{
 		FieldLogger: log.WithField("context", "CacheHandler"),
@@ -168,7 +169,8 @@ func main() {
 
 		reh.IngressRouteRootNamespaces = parseRootNamespaces(ingressrouteRootNamespaceFlag)
 		reh.Builder = dag.Builder{
-			ConfigMode: *contourConfigMode,
+			ConfigMode:  *contourConfigMode,
+			BackendName: *backendName,
 		}
 
 		client, contourClient := newClient(*kubeconfig, *inCluster)
