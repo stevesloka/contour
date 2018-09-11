@@ -575,16 +575,14 @@ func (b *builder) processIngressRoute(ir *ingressroutev1.IngressRoute, prefixMat
 						}
 						break
 					case "edge":
-						if len(svc.Object.Labels["gimbal.heptio.com/backend"]) > 0 {
+						if len(svc.Object.Labels["gimbal.heptio.com/backend"]) > 0 &&
+							len(svc.Object.Labels["gimbal.heptio.com/service"]) > 0 {
 							// Make sure routes only get configured to this edge
 							if b.backendName == svc.Object.Labels["gimbal.heptio.com/backend"] {
-								// TODO: Strip the backend name from the service
 								// Convention is the service is "backend-serviceName" so we'll trim off the backendname since that doesn't exist
 								// in the upstream cluster for the edge envoy routing
-								backendName := svc.Object.Labels["gimbal.heptio.com/backend"]
-								svcName := strings.TrimPrefix(svc.Object.Name, fmt.Sprintf("%s-", backendName))
-								svc.Object.Name = svcName
-								s.Name = svcName
+								svc.Object.Name = svc.Object.Labels["gimbal.heptio.com/service"]
+								s.Name = svc.Object.Labels["gimbal.heptio.com/service"]
 								r.addService(svc, s.HealthCheck, s.Strategy)
 							}
 						}
