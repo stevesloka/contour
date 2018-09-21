@@ -140,6 +140,10 @@ static_resources:
                           route:
                             cluster: service_stats
                 http_filters:
+                  - name: envoy.health_check
+                    config:
+                      endpoint: "/healthz"
+                      pass_through_mode: false
                   - name: envoy.router
                     config:
 stats_sinks:

@@ -183,10 +183,11 @@ const (
 	DEFAULT_HTTPS_LISTENER_ADDRESS = DEFAULT_HTTP_LISTENER_ADDRESS
 	DEFAULT_HTTPS_LISTENER_PORT    = 8443
 
-	router     = "envoy.router"
-	grpcWeb    = "envoy.grpc_web"
-	httpFilter = "envoy.http_connection_manager"
-	accessLog  = "envoy.file_access_log"
+	router      = "envoy.router"
+	healthCheck = "envoy.health_check"
+	grpcWeb     = "envoy.grpc_web"
+	httpFilter  = "envoy.http_connection_manager"
+	accessLog   = "envoy.file_access_log"
 )
 
 type listenerVisitor struct {
@@ -300,6 +301,13 @@ func httpfilter(routename, accessLogPath string) listener.Filter {
 					st(map[string]*types.Value{
 						"name": sv(router),
 					}),
+					// st(map[string]*types.Value{
+					// 	"name": sv(healthCheck),
+					// 	"config": st(map[string]*types.Value{
+					// 		"endpoint":          sv("/healthz"),
+					// 		"pass_through_mode": sv("false"),
+					// 	}),
+					// }),
 				),
 				"use_remote_address": bv(true), // TODO(jbeda) should this ever be false?
 				"access_log":         accesslog(accessLogPath),
