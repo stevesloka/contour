@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2"
+	"github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
 	envoy_cluster "github.com/envoyproxy/go-control-plane/envoy/api/v2/cluster"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type"
@@ -40,6 +41,9 @@ func Cluster(service *dag.Service) *v2.Cluster {
 		LbPolicy:         lbPolicy(service.LoadBalancerStrategy),
 		CommonLbConfig:   clusterCommonLBConfig(),
 		HealthChecks:     edshealthcheck(service.HealthCheck),
+		// TlsContext: &auth.UpstreamTlsContext{
+		// 	Sni: Clustername(service),
+		// },
 	}
 	if anyPositive(service.MaxConnections, service.MaxPendingRequests, service.MaxRequests, service.MaxRetries) {
 		cluster.CircuitBreakers = &envoy_cluster.CircuitBreakers{
