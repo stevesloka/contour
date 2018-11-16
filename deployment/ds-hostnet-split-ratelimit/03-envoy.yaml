@@ -4,7 +4,7 @@ metadata:
   labels:
     app: envoy
   name: envoy
-  namespace: gimbal-contour
+  namespace: heptio-contour
 spec:
   updateStrategy:
     type: RollingUpdate
@@ -26,7 +26,7 @@ spec:
       containers:
       - args:
         - -c
-        - /config/contour.json
+        - /config/contour.yaml
         - --service-cluster
         - cluster0
         - --service-node
@@ -63,11 +63,14 @@ spec:
       initContainers:
       - args:
         - bootstrap
-        - /config/contour.json
+        - /config/contour.yaml
         - --xds-address
         - $(CONTOUR_SERVICE_HOST)
         - --xds-port
         - $(CONTOUR_SERVICE_PORT)
+        - --rate-limit-enabled
+        - --rate-limit-address
+        - $(RATELIMIT_SERVICE_HOST)
         command:
         - contour
         image: gcr.io/heptio-images/contour:master
@@ -80,7 +83,4 @@ spec:
       volumes:
         - name: contour-config
           emptyDir: {}
-        - name: ratelimit-config
-          configMap:
-            name: ratelimit-config
       restartPolicy: Always
