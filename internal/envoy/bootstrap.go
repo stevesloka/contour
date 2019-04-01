@@ -214,4 +214,16 @@ type BootstrapConfig struct {
 	// StatsdPort is port of the statsd endpoint
 	// Defaults to 9125.
 	StatsdPort int
+
+	// RateLimitServiceEnabled enables ratelimiting filter
+	// Defaults to false.
+	RateLimitServiceEnabled bool
+
+	// RateLimitServiceName is the address of the ratelimiting impl service
+	// Defaults to 127.0.0.1
+	RateLimitServiceAddress string
+
+	// RateLimitServicePort is the port of the ratelimiting impl service
+	// Defaults to 8081.
+	RateLimitServicePort int
 }

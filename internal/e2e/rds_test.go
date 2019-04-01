@@ -2677,3 +2677,35 @@ func TestRateLimiting(t *testing.T) {
 		}},
 	}}, nil)
 }
+
+func routeclusterRatelimit(config map[string]string) []*route.RateLimit {
+	if len(config) > 0 {
+		actions := []*route.RateLimit_Action{}
+		for key, val := range config {
+			switch key {
+			case "generic_key":
+				a := &route.RateLimit_Action{
+					ActionSpecifier: &route.RateLimit_Action_GenericKey_{
+						GenericKey: &route.RateLimit_Action_GenericKey{
+							DescriptorValue: val,
+						},
+					},
+				}
+				actions = append(actions, a)
+			case "remote_address":
+				a := &route.RateLimit_Action{
+					ActionSpecifier: &route.RateLimit_Action_RemoteAddress_{
+						RemoteAddress: &route.RateLimit_Action_RemoteAddress{},
+					},
+				}
+				actions = append(actions, a)
+			}
+		}
+
+		return []*route.RateLimit{{
+			Stage:   &types.UInt32Value{Value: 0},
+			Actions: actions,
+		}}
+	}
+	return nil
+}
