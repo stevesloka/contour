@@ -603,8 +603,11 @@ func TestLDSIngressHTTPUseProxyProtocol(t *testing.T) {
 		VersionInfo: "0",
 		Resources: []types.Any{
 			any(t, &v2.Listener{
-				Name:         "ingress_http",
-				Address:      *envoy.SocketAddress("0.0.0.0", 8080),
+				Name:    "ingress_http",
+				Address: *envoy.SocketAddress("0.0.0.0", 8080),
+				ListenerFilters: []listener.ListenerFilter{
+					envoy.ProxyProtocol(),
+				},
 				FilterChains: filterchain(envoy.HTTPConnectionManager("ingress_http", "/dev/stdout", "contour", 0, false)),
 			}),
 		},
@@ -674,8 +677,11 @@ func TestLDSIngressHTTPSUseProxyProtocol(t *testing.T) {
 		VersionInfo: "0",
 		Resources: []types.Any{
 			any(t, &v2.Listener{
-				Name:         "ingress_http",
-				Address:      *envoy.SocketAddress("0.0.0.0", 8080),
+				Name:    "ingress_http",
+				Address: *envoy.SocketAddress("0.0.0.0", 8080),
+				ListenerFilters: []listener.ListenerFilter{
+					envoy.ProxyProtocol(),
+				},
 				FilterChains: filterchain(envoy.HTTPConnectionManager("ingress_http", "/dev/stdout", "contour", 0, false)),
 			}),
 			any(t, ingress_https),
