@@ -824,7 +824,7 @@ func TestLDSCustomAccessLogPaths(t *testing.T) {
 		ListenerFilters: []listener.ListenerFilter{
 			envoy.TLSInspector(),
 		},
-		FilterChains: filterchaintls("kuard.example.com", envoy.HTTPConnectionManager("ingress_https", "/dev/stdout", "contour", 0, false), "h2", "http/1.1"),
+		FilterChains: filterchaintls("kuard.example.com", envoy.HTTPConnectionManager("ingress_https", "/tmp/https_access.log", "contour", 0, false), "h2", "http/1.1"),
 	}
 	assertEqual(t, &v2.DiscoveryResponse{
 		VersionInfo: "0",
