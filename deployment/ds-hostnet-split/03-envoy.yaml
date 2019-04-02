@@ -4,7 +4,7 @@ metadata:
   labels:
     app: envoy
   name: envoy
-  namespace: gimbal-contour
+  namespace: heptio-contour
 spec:
   updateStrategy:
     type: RollingUpdate
