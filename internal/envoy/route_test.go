@@ -260,7 +260,7 @@ func TestRouteRoute(t *testing.T) {
 					RateLimits: []*route.RateLimit{{
 						Stage: &types.UInt32Value{Value: defaultRatelimitStage},
 						Actions: []*route.RateLimit_Action{
-							&route.RateLimit_Action{
+							{
 								ActionSpecifier: &route.RateLimit_Action_RemoteAddress_{
 									RemoteAddress: &route.RateLimit_Action_RemoteAddress{},
 								},
@@ -289,7 +289,7 @@ func TestRouteRoute(t *testing.T) {
 					RateLimits: []*route.RateLimit{{
 						Stage: &types.UInt32Value{Value: defaultRatelimitStage},
 						Actions: []*route.RateLimit_Action{
-							&route.RateLimit_Action{
+							{
 								ActionSpecifier: &route.RateLimit_Action_GenericKey_{
 									GenericKey: &route.RateLimit_Action_GenericKey{
 										DescriptorValue: "foo",
@@ -321,14 +321,14 @@ func TestRouteRoute(t *testing.T) {
 					RateLimits: []*route.RateLimit{{
 						Stage: &types.UInt32Value{Value: defaultRatelimitStage},
 						Actions: []*route.RateLimit_Action{
-							&route.RateLimit_Action{
+							{
 								ActionSpecifier: &route.RateLimit_Action_GenericKey_{
 									GenericKey: &route.RateLimit_Action_GenericKey{
 										DescriptorValue: "foo",
 									},
 								},
 							},
-							&route.RateLimit_Action{
+							{
 								ActionSpecifier: &route.RateLimit_Action_RemoteAddress_{
 									RemoteAddress: &route.RateLimit_Action_RemoteAddress{},
 								},

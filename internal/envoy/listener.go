@@ -16,7 +16,7 @@ package envoy
 import (
 	"sort"
 
-	"github.com/envoyproxy/go-control-plane/envoy/api/v2"
+	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/listener"
@@ -98,8 +98,8 @@ func HTTPConnectionManager(routename, accessLogPath, rateLimitDomain string, rat
 							"name": sv("envoy.rate_limit"),
 							"config": st(map[string]*types.Value{
 								"domain":            sv(rateLimitDomain),
-								"stage":             &types.Value{Kind: &types.Value_NumberValue{NumberValue: float64(rateLimitStage)}},
-								"failure_mode_deny": &types.Value{Kind: &types.Value_BoolValue{BoolValue: rateLimitFailureModeDeny}},
+								"stage":             {Kind: &types.Value_NumberValue{NumberValue: float64(rateLimitStage)}},
+								"failure_mode_deny": {Kind: &types.Value_BoolValue{BoolValue: rateLimitFailureModeDeny}},
 							}),
 						}),
 						st(map[string]*types.Value{
