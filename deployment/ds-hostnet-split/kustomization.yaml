@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# list of Resource Config to be Applied
+resources:
+- 02-service-contour.yaml
+- 02-service-envoy.yaml
+- 02-statsd.yaml
+- 03-contour.yaml
+- 03-envoy.yaml
+
+# Value of this field is prepended to the
+# names of all resources, e.g. a deployment named
+# "wordpress" becomes "alices-wordpress".
+namePrefix: integrationtest-
+
+# Labels to add to all resources and selectors.
+commonLabels:
+  type: integration
+
+images:
+  - name: gcr.io/heptio-images/contour:master
+    newName: local/contour
+    newTag: inttest

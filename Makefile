@@ -14,9 +14,23 @@ export GO111MODULE=on
 test: install
 	go test -mod=readonly ./...
 
+int: container container_integration
+	# Create Cluster
+	# kind delete cluster || true
+	# kind create cluster
+	# export KUBECONFIG="$(shell kind get kubeconfig-path --name="kind")"
+
+	kind load docker-image local/contour:inttest
+	kind load docker-image local/contour-integration-tests:inttest
+
+	# Deploy contour
+	kubectl apply -f deployment/ds-hostnet-split/01-common.yaml
+	kubectl apply -f deployment/ds-hostnet-split/02-rbac.yaml
+	kubectl kustomize deployment/ds-hostnet-split | kubectl apply -f -
+
 test-race: | test
 	go test -race -mod=readonly ./...
-
+ 
 vet: | test
 	go vet ./...
 
@@ -33,6 +47,9 @@ download:
 container:
 	docker build . -t $(IMAGE):$(VERSION)
 
+container_integration:
+	docker build . -t $(REGISTRY)/contour-integration-tests:$(VERSION) -f ./integration/Dockerfile
+
 push: container
 	docker push $(IMAGE):$(VERSION)
 ifeq ($(TAG_LATEST), true)
@@ -45,7 +62,9 @@ $(LOCAL_BOOTSTRAP_CONFIG): install
 
 local: $(LOCAL_BOOTSTRAP_CONFIG)
 	docker run \
+		--name=contour_envoy \
 		-it \
+		-d \
 		--mount type=bind,source=$(CURDIR),target=/config \
 		-p 9001:9001 \
 		-p 8002:8002 \

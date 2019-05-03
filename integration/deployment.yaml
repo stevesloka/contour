@@ -1,0 +1,14 @@
+sonobuoy-config:
+  driver: Job
+  plugin-name: contour-integration
+  result-type: contour-integration
+spec:
+  command:
+  - ./run.sh
+  image: local/contour-integration-tests:inttest
+  name: plugin
+  resources: {}
+  volumeMounts:
+  - mountPath: /tmp/results
+    name: results
+

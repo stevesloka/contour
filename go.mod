@@ -12,6 +12,7 @@ require (
 	github.com/gogo/googleapis v1.1.0 // indirect
 	github.com/gogo/protobuf v1.2.1
 	github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef // indirect
+	github.com/golang/protobuf v1.3.1 // indirect
 	github.com/google/go-cmp v0.2.0
 	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf // indirect
 	github.com/googleapis/gnostic v0.2.0 // indirect
@@ -31,6 +32,7 @@ require (
 	github.com/prometheus/procfs v0.0.0-20190403104016-ea9eea638872 // indirect
 	github.com/sirupsen/logrus v1.4.1
 	github.com/spf13/pflag v1.0.3 // indirect
+	github.com/stretchr/testify v1.2.2
 	golang.org/x/crypto v0.0.0-20190404164418-38d8ce5564a5 // indirect
 	golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3 // indirect
 	golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a // indirect

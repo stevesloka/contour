@@ -1,0 +1,242 @@
+apiVersion: v1
+data:
+  statsd.yaml: "mappings: \n- match: 'cluster\\.(.+?)_(.+?)_(.+?)\\.upstream_cx_connect_ms'\n
+    \ match_type: regex\n  name: \"envoy_cluster_upstream_cx_connect_time\"\n  timer_type:
+    'histogram'\n  labels:\n    cluster_name: \"$1/$2/$3\"\n    namespace: \"$1\"\n
+    \   service: \"$2\"\n    port: \"$3\"\n- match: 'cluster\\.(.+?)_(.+?)_(.+?)\\.upstream_cx_length_ms'\n
+    \ match_type: regex\n  name: \"envoy_cluster_upstream_cx_length\"\n  timer_type:
+    'histogram'\n  labels:\n    cluster_name: \"$1/$2/$3\"\n    namespace: \"$1\"\n
+    \   service: \"$2\"\n    port: \"$3\"\n- match: 'cluster\\.(.+?)_(.+?)_(.+?)\\.upstream_rq_time'\n
+    \ match_type: regex\n  name: \"envoy_cluster_upstream_rq_time\"\n  timer_type:
+    'histogram'\n  labels:\n    cluster_name: \"$1/$2/$3\"\n    namespace: \"$1\"\n
+    \   service: \"$2\"\n    port: \"$3\"\n- match: 'cluster\\.(.+?)_(.+?)_(.+?)\\.internal.upstream_rq_time'\n
+    \ match_type: regex\n  name: \"envoy_cluster_internal_upstream_rq_time\"\n  timer_type:
+    'histogram'\n  labels:\n    cluster_name: \"$1/$2/$3\"\n    namespace: \"$1\"\n
+    \   service: \"$2\"\n    port: \"$3\"\n- match: 'cluster\\.(.+?)_(.+?)_(.+?)\\.external.upstream_rq_time'\n
+    \ match_type: regex\n  name: \"envoy_cluster_external_upstream_rq_time\"\n  timer_type:
+    'histogram'\n  labels:\n    cluster_name: \"$1/$2/$3\"\n    namespace: \"$1\"\n
+    \   service: \"$2\"\n    port: \"$3\"\n- match: 'cluster\\.(.+?)_(.+?)_(.+?)\\.canary.upstream_rq_time'\n
+    \ match_type: regex\n  name: \"envoy_cluster_canary_upstream_rq_time\"\n  timer_type:
+    'histogram'\n  labels:\n    cluster_name: \"$1/$2/$3\"\n    namespace: \"$1\"\n
+    \   service: \"$2\"\n    port: \"$3\"\n- match: 'envoy.http.*.downstream_cx_length_ms'\n
+    \ name: \"envoy_http_downstream_cx_length\"\n  timer_type: 'histogram'\n  labels:\n
+    \   http_conn_manager_prefix: \"$1\"\n- match: 'envoy.http.*.downstream_rq_time'\n
+    \ name: \"envoy_http_downstream_rq_time\"\n  timer_type: 'histogram'\n  labels:\n
+    \   http_conn_manager_prefix: \"$1\"\n- match: '.'\n  match_type: 'regex'\n  action:
+    'drop'\n  name: 'dropped'"
+kind: ConfigMap
+metadata:
+  labels:
+    type: integration
+  name: integrationtest-envoy-statsd
+  namespace: heptio-contour
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    type: integration
+  name: integrationtest-contour
+  namespace: heptio-contour
+spec:
+  ports:
+  - name: xds
+    port: 8001
+    protocol: TCP
+    targetPort: 8001
+  selector:
+    app: contour
+    type: integration
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+  labels:
+    type: integration
+  name: integrationtest-envoy
+  namespace: heptio-contour
+spec:
+  externalTrafficPolicy: Local
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+  - name: https
+    port: 443
+    protocol: TCP
+  selector:
+    app: envoy
+    type: integration
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: contour
+    type: integration
+  name: integrationtest-contour
+  namespace: heptio-contour
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: contour
+      type: integration
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "8000"
+        prometheus.io/scrape: "true"
+      labels:
+        app: contour
+        type: integration
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: contour
+                  type: integration
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      containers:
+      - args:
+        - serve
+        - --incluster
+        - --xds-address=0.0.0.0
+        - --xds-port=$(CONTOUR_SERVICE_PORT)
+        - --envoy-service-http-port=80
+        - --envoy-service-https-port=443
+        command:
+        - contour
+        image: local/contour:inttest
+        imagePullPolicy: IfNotPresent
+        name: contour
+        ports:
+        - containerPort: 8001
+          name: xds
+          protocol: TCP
+        - containerPort: 8000
+          name: debug
+          protocol: TCP
+      dnsPolicy: ClusterFirst
+      serviceAccountName: contour
+---
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  labels:
+    app: envoy
+    type: integration
+  name: integrationtest-envoy
+  namespace: heptio-contour
+spec:
+  selector:
+    matchLabels:
+      app: envoy
+      type: integration
+  template:
+    metadata:
+      annotations:
+        prometheus.io/path: /stats/prometheus
+        prometheus.io/port: "8002"
+        prometheus.io/scrape: "true"
+        prometheus.io/statsdport: "9102"
+      labels:
+        app: envoy
+        type: integration
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - args:
+        - -c
+        - /config/contour.json
+        - --service-cluster
+        - cluster0
+        - --service-node
+        - node0
+        command:
+        - envoy
+        image: docker.io/envoyproxy/envoy:v1.9.1
+        imagePullPolicy: IfNotPresent
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - wget
+              - -qO-
+              - --post-data=''
+              - http://localhost:9001/healthcheck/fail
+        name: envoy
+        ports:
+        - containerPort: 80
+          hostPort: 80
+          name: http
+          protocol: TCP
+        - containerPort: 443
+          hostPort: 443
+          name: https
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8002
+          initialDelaySeconds: 3
+          periodSeconds: 3
+        volumeMounts:
+        - mountPath: /config
+          name: contour-config
+      - args:
+        - -statsd.mapping-config=/etc/statsd/statsd.yaml
+        command:
+        - /bin/statsd_exporter
+        image: prom/statsd-exporter:v0.6.0
+        name: statsd-sink
+        ports:
+        - containerPort: 9102
+          name: metrics
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /etc/statsd
+          name: statsd
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      initContainers:
+      - args:
+        - bootstrap
+        - /config/contour.json
+        - --xds-address
+        - $(CONTOUR_SERVICE_HOST)
+        - --xds-port
+        - $(CONTOUR_SERVICE_PORT)
+        - --statsd-enabled
+        command:
+        - contour
+        env:
+        - name: CONTOUR_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: local/contour:inttest
+        imagePullPolicy: IfNotPresent
+        name: envoy-initconfig
+        volumeMounts:
+        - mountPath: /config
+          name: contour-config
+      restartPolicy: Always
+      volumes:
+      - emptyDir: {}
+        name: contour-config
+      - configMap:
+          name: integrationtest-envoy-statsd
+        name: statsd
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 10%
+    type: RollingUpdate
