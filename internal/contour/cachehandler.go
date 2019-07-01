@@ -66,6 +66,10 @@ func (ch *CacheHandler) saveDAG(d *dag.DAG) {
 // ShouldUpdate is called to determine if the object changing
 	// is referenced from an Ingress / IngressRoute object
 func (ch *CacheHandler) ShouldUpdate(obj interface{}) bool {
+	if ch.previousDAG == nil {
+		return true
+	}
+
 	switch obj := obj.(type) {
 	case *v1.Secret:
 		m := dag.NewMeta(obj.Name, obj.Namespace)
