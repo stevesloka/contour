@@ -94,7 +94,7 @@ func (reh *ResourceEventHandler) OnUpdate(oldObj, newObj interface{}) {
 		reh.WithField("op", "update").Debugf("%T", newObj)
 		reh.Remove(oldObj)
 		reh.Insert(newObj)
-		if reh.Notifier.ShouldUpdate(obj) {
+		if reh.Notifier.ShouldUpdate(newObj) {
 			reh.update()
 		}
 
@@ -107,8 +107,8 @@ func (reh *ResourceEventHandler) OnDelete(obj interface{}) {
 	// no need to check ingress class here
 	reh.WithField("op", "delete").Debugf("%T", obj)
 	reh.Remove(obj)
-	if reh.Notifier.ShouldUpdate(obj) { 		
-		reh.update() 	
+	if reh.Notifier.ShouldUpdate(obj) {
+		reh.update()
 	}
 }
 

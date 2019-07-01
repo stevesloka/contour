@@ -590,8 +590,8 @@ func (b *builder) DAG(secrets map[Meta]*v1.Secret, services map[Meta]*v1.Service
 		}
 	}
 	dag.statuses = b.statuses
-	dag.secrets = secrets
-	dag.services = services
+	dag.Secrets = secrets
+	dag.Services = services
 
 	fmt.Println("----- secrets used: ", secrets)
 
