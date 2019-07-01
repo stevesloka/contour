@@ -20,7 +20,7 @@ import (
 
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
 	ingressroutev1 "github.com/heptio/contour/apis/contour/v1beta1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 // A DAG represents a directed acylic graph of objects representing the relationship
@@ -32,6 +32,10 @@ type DAG struct {
 
 	// status computed while building this dag.
 	statuses []Status
+
+	// Kubernetes objects in the DAG that are referenced
+	Secrets  map[Meta]Empty
+	Services map[Meta]Empty
 }
 
 // Visit calls fn on each root of this DAG.
@@ -98,7 +102,7 @@ type UpstreamValidation struct {
 	// CACertificate holds a reference to the Secret containing the CA to be used to
 	// verify the upstream connection.
 	CACertificate *Secret
-	// SubjectName holds an optional subject name which Envoy will check against the
+	// SubjectName holds an optional subject Name which Envoy will check against the
 	// certificate presented by the upstream.
 	SubjectName string
 }
@@ -111,7 +115,7 @@ func (r *Route) Visit(f func(Vertex)) {
 
 // A VirtualHost represents a named L4/L7 service.
 type VirtualHost struct {
-	// Name is the fully qualified domain name of a network host,
+	// Name is the fully qualified domain Name of a network host,
 	// as defined by RFC 3986.
 	Name string
 
@@ -308,9 +312,9 @@ func (s *Secret) PrivateKey() []byte {
 	return s.Object.Data[v1.TLSPrivateKeyKey]
 }
 
-func (s *Secret) toMeta() meta {
-	return meta{
-		name:      s.Name(),
-		namespace: s.Namespace(),
+func (s *Secret) toMeta() Meta {
+	return Meta{
+		Name:      s.Name(),
+		Namespace: s.Namespace(),
 	}
 }
