@@ -24,7 +24,7 @@ import (
 	ingressroutev1 "github.com/heptio/contour/apis/contour/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/Meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -2978,32 +2978,32 @@ func TestBuilderLookupHTTPService(t *testing.T) {
 			}},
 		},
 	}
-	services := map[meta]*v1.Service{
+	services := map[Meta]*v1.Service{
 		{name: "service1", namespace: "default"}: s1,
 	}
 
 	tests := map[string]struct {
-		meta
+		Meta
 		port intstr.IntOrString
 		want *HTTPService
 	}{
 		"lookup service by port number": {
-			meta: meta{name: "service1", namespace: "default"},
+			Meta: Meta{name: "service1", namespace: "default"},
 			port: intstr.FromInt(8080),
 			want: httpService(s1),
 		},
 		"lookup service by port name": {
-			meta: meta{name: "service1", namespace: "default"},
+			Meta: Meta{name: "service1", namespace: "default"},
 			port: intstr.FromString("http"),
 			want: httpService(s1),
 		},
 		"lookup service by port number (as string)": {
-			meta: meta{name: "service1", namespace: "default"},
+			Meta: Meta{name: "service1", namespace: "default"},
 			port: intstr.Parse("8080"),
 			want: httpService(s1),
 		},
 		"lookup service by port number (from string)": {
-			meta: meta{name: "service1", namespace: "default"},
+			Meta: Meta{name: "service1", namespace: "default"},
 			port: intstr.FromString("8080"),
 			want: httpService(s1),
 		},
@@ -3018,7 +3018,7 @@ func TestBuilderLookupHTTPService(t *testing.T) {
 					},
 				},
 			}
-			got := b.lookupHTTPService(tc.meta, tc.port)
+			got := b.lookupHTTPService(tc.Meta, tc.port)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Fatal(diff)
 			}
@@ -3831,12 +3831,12 @@ func TestEnforceRoute(t *testing.T) {
 func TestSplitSecret(t *testing.T) {
 	tests := map[string]struct {
 		secret, defns string
-		want          meta
+		want          Meta
 	}{
 		"no namespace": {
 			secret: "secret",
 			defns:  "default",
-			want: meta{
+			want: Meta{
 				name:      "secret",
 				namespace: "default",
 			},
@@ -3844,7 +3844,7 @@ func TestSplitSecret(t *testing.T) {
 		"with namespace": {
 			secret: "ns1/secret",
 			defns:  "default",
-			want: meta{
+			want: Meta{
 				name:      "secret",
 				namespace: "ns1",
 			},
@@ -3852,7 +3852,7 @@ func TestSplitSecret(t *testing.T) {
 		"missing namespace": {
 			secret: "/secret",
 			defns:  "default",
-			want: meta{
+			want: Meta{
 				name:      "secret",
 				namespace: "default",
 			},
@@ -3860,7 +3860,7 @@ func TestSplitSecret(t *testing.T) {
 		"missing secret name": {
 			secret: "secret/",
 			defns:  "default",
-			want: meta{
+			want: Meta{
 				name:      "",
 				namespace: "secret",
 			},
@@ -3871,7 +3871,7 @@ func TestSplitSecret(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			got := splitSecret(tc.secret, tc.defns)
 			opts := []cmp.Option{
-				cmp.AllowUnexported(meta{}),
+				cmp.AllowUnexported(Meta{}),
 			}
 			if diff := cmp.Diff(tc.want, got, opts...); diff != "" {
 				t.Fatal(diff)

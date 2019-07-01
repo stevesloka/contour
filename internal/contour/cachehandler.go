@@ -22,6 +22,7 @@ import (
 	"github.com/heptio/contour/internal/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
+	v1 "k8s.io/api/core/v1"
 )
 
 // CacheHandler manages the state of xDS caches.
@@ -35,6 +36,9 @@ type CacheHandler struct {
 	IngressRouteStatus *k8s.IngressRouteStatus
 	logrus.FieldLogger
 	*metrics.Metrics
+
+	// holds the previously processed DAG
+	previousDAG *dag.DAG
 }
 
 type statusable interface {
@@ -51,6 +55,33 @@ func (ch *CacheHandler) OnChange(b *dag.Builder) {
 	ch.updateRoutes(dag)
 	ch.updateClusters(dag)
 	ch.updateIngressRouteMetric(dag)
+	ch.saveDAG(dag)
+}
+
+func (ch *CacheHandler) saveDAG(d *dag.DAG) {
+	// store the dag for the next build
+	ch.previousDAG = d
+}
+
+// ShouldUpdate is called to determine if the object changing
+	// is referenced from an Ingress / IngressRoute object
+func (ch *CacheHandler) ShouldUpdate(obj interface{}) bool {
+	switch obj := obj.(type) {
+	case *v1.Secret:
+		m := dag.NewMeta(obj.Name, obj.Namespace)
+		if _, ok := ch.previousDAG.Secrets[m]; ok {
+			return true
+		}
+	case *v1.Service:
+		m := dag.NewMeta(obj.Name, obj.Namespace)
+		if _, ok := ch.previousDAG.Services[m]; ok {
+			return true
+		}
+	default:
+		// not an interesting object
+		return true
+	}
+	return false
 }
 
 func (ch *CacheHandler) setIngressRouteStatus(st statusable) {
