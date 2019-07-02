@@ -17,6 +17,8 @@
 package contour
 
 import (
+	"fmt"
+
 	"github.com/heptio/contour/internal/dag"
 	"github.com/heptio/contour/internal/k8s"
 	"github.com/heptio/contour/internal/metrics"
@@ -64,7 +66,7 @@ func (ch *CacheHandler) saveDAG(d *dag.DAG) {
 }
 
 // ShouldUpdate is called to determine if the object changing
-	// is referenced from an Ingress / IngressRoute object
+// is referenced from an Ingress / IngressRoute object
 func (ch *CacheHandler) ShouldUpdate(obj interface{}) bool {
 	if ch.previousDAG == nil {
 		return true
@@ -72,8 +74,10 @@ func (ch *CacheHandler) ShouldUpdate(obj interface{}) bool {
 
 	switch obj := obj.(type) {
 	case *v1.Secret:
+		fmt.Println("----- secret: ", obj.GetName())
 		m := dag.NewMeta(obj.Name, obj.Namespace)
 		if _, ok := ch.previousDAG.Secrets[m]; ok {
+			fmt.Println("----------- true")
 			return true
 		}
 	case *v1.Service:
@@ -85,6 +89,7 @@ func (ch *CacheHandler) ShouldUpdate(obj interface{}) bool {
 		// not an interesting object
 		return true
 	}
+	fmt.Println("----------- false")
 	return false
 }
 
