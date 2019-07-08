@@ -27,7 +27,7 @@ func registerCertGen(app *kingpin.Application) (*kingpin.CmdClause, *certgen.Con
 	var certgenConfig certgen.Config
 	certgenApp := app.Command("certgen", "Generate new TLS certs for bootstrapping gRPC over TLS")
 	certgenApp.Flag("kube", "Apply the generated certs directly to the current Kubernetes cluster").BoolVar(&certgenConfig.OutputKube)
-	certgenApp.Flag("yaml", "Render the generated certs as Kubernetes Secrets in YAML form to the current directory").BoolVar(&certgenConfig.OutputYAML)
+	certgenApp.Flag("yaml", "Render the generated certs as Kubernetes secrets in YAML form to the current directory").BoolVar(&certgenConfig.OutputYAML)
 	certgenApp.Flag("pem", "Render the generated certs as individual PEM files to the current directory").BoolVar(&certgenConfig.OutputPEM)
 	certgenApp.Flag("incluster", "use in cluster configuration.").BoolVar(&certgenConfig.InCluster)
 	certgenApp.Flag("kubeconfig", "path to kubeconfig (if not in running inside a cluster)").Default(filepath.Join(os.Getenv("HOME"), ".kube", "config")).StringVar(&certgenConfig.KubeConfig)

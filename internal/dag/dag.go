@@ -24,7 +24,7 @@ import (
 )
 
 // A DAG represents a directed acylic graph of objects representing the relationship
-// between Kubernetes Ingress objects, the backend Services, and Secret objects.
+// between Kubernetes Ingress objects, the backend services, and Secret objects.
 // The DAG models these relationships as Roots and Vertices.
 type DAG struct {
 	// roots are the roots of this dag

@@ -35,10 +35,10 @@ const (
 	StatusOrphaned = "orphaned"
 )
 
-// BuildDAG returns a new DAG from the supplied KubernetesCache.
-func BuildDAG(kc *KubernetesCache) *DAG {
+// BuildDAG returns a new DAG/ReferencedCache from the supplied KubernetesCache.
+func BuildDAG(kc *KubernetesCache) (*DAG, ReferencedCache) {
 	builder := &builder{source: kc}
-	return builder.compute()
+	return builder.compute(), builder.cache
 }
 
 // A builder holds the state of one invocation of Builder.Build.
@@ -280,7 +280,7 @@ func (b *builder) compute() *DAG {
 
 	b.computeIngressRoutes()
 
-	return b.DAG(b.cache.secrets, b.cache.services)
+	return b.DAG(b.cache.Secrets, b.cache.Services)
 }
 
 // prefixRoute returns a new dag.Route for the (ingress,prefix) tuple.
@@ -595,8 +595,8 @@ func (b *builder) DAG(secrets map[Meta]Empty, services map[Meta]Empty) *DAG {
 		}
 	}
 	dag.statuses = b.statuses
-	//dag.Secrets = secrets
-	//dag.Services = services
+	//dag.secrets = secrets
+	//dag.services = services
 
 	return &dag
 }

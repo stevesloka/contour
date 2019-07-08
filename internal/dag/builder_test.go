@@ -2909,7 +2909,7 @@ func TestDAGInsert(t *testing.T) {
 			for _, o := range tc.objs {
 				kc.Insert(o)
 			}
-			dag := BuildDAG(&kc)
+			dag, _ := BuildDAG(&kc)
 
 			got := make(map[int]*Listener)
 			dag.Visit(listenerMap(got).Visit)
@@ -3117,7 +3117,7 @@ func TestDAGRootNamespaces(t *testing.T) {
 			for _, o := range tc.objs {
 				kc.Insert(o)
 			}
-			dag := BuildDAG(kc)
+			dag, _ := BuildDAG(kc)
 
 			var count int
 			dag.Visit(func(v Vertex) {
@@ -3578,7 +3578,7 @@ func TestDAGIngressRouteStatus(t *testing.T) {
 			for _, o := range tc.objs {
 				kc.Insert(o)
 			}
-			dag := BuildDAG(kc)
+			dag, _ := BuildDAG(kc)
 			got := dag.Statuses()
 			if len(tc.want) != len(got) {
 				t.Fatalf("expected:\n%v\ngot\n%v", tc.want, got)
@@ -3699,7 +3699,7 @@ func TestDAGIngressRouteUniqueFQDNs(t *testing.T) {
 			for _, o := range tc.objs {
 				kc.Insert(o)
 			}
-			dag := BuildDAG(&kc)
+			dag, _ := BuildDAG(&kc)
 			got := make(map[int]*Listener)
 			dag.Visit(listenerMap(got).Visit)
 

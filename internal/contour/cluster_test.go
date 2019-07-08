@@ -867,7 +867,7 @@ func TestClusterVisit(t *testing.T) {
 			for _, o := range tc.objs {
 				reh.OnAdd(o)
 			}
-			root := dag.BuildDAG(&reh.KubernetesCache)
+			root, _ := dag.BuildDAG(&reh.KubernetesCache)
 			got := visitClusters(root)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Fatal(diff)

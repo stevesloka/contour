@@ -48,26 +48,26 @@ type Empty struct{}
 // A ReferencedCache holds Kubernetes objects and associated configurations
 // that are referenced from an Ingress or IngressRoute object
 type ReferencedCache struct {
-	secrets  map[Meta]Empty
-	services map[Meta]Empty
+	Secrets  map[Meta]Empty
+	Services map[Meta]Empty
 }
 
 // InsertService inserts a service into the ReferencedCache
 func (rc *ReferencedCache) InsertService(name, namespace string) {
 	m := Meta{Name: name, Namespace: namespace}
-	if rc.services == nil {
-		rc.services = make(map[Meta]Empty)
+	if rc.Services == nil {
+		rc.Services = make(map[Meta]Empty)
 	}
-	rc.services[m] = Empty{}
+	rc.Services[m] = Empty{}
 }
 
 // InsertSecret inserts a secret into the ReferencedCache
 func (rc *ReferencedCache) InsertSecret(name, namespace string) {
 	m := Meta{Name: name, Namespace: namespace}
-	if rc.secrets == nil {
-		rc.secrets = make(map[Meta]Empty)
+	if rc.Secrets == nil {
+		rc.Secrets = make(map[Meta]Empty)
 	}
-	rc.secrets[m] = Empty{}
+	rc.Secrets[m] = Empty{}
 }
 
 // Meta holds the Name and Namespace of a Kubernetes object.
