@@ -389,8 +389,8 @@ func (b *builder) computeSecureVirtualhosts() {
 	}
 }
 
-// splitSecret splits a secretName into its Namespace and Name components.
-// If there is no Namespace prefix, the default Namespace is returned.
+// splitSecret splits a secretName into its namespace and name components.
+// If there is no namespace prefix, the default namespace is returned.
 func splitSecret(secret, defns string) Meta {
 	v := strings.SplitN(secret, "/", 2)
 	switch len(v) {
@@ -486,9 +486,9 @@ func (b *builder) computeIngressRoutes() {
 			continue
 		}
 
-		// ensure root ingressroute lives in allowed Namespace
+		// ensure root ingressroute lives in allowed namespace
 		if !b.rootAllowed(ir) {
-			b.setStatus(Status{Object: ir, Status: StatusInvalid, Description: "root IngressRoute cannot be defined in this Namespace"})
+			b.setStatus(Status{Object: ir, Status: StatusInvalid, Description: "root IngressRoute cannot be defined in this namespace"})
 			continue
 		}
 
@@ -609,7 +609,7 @@ func (b *builder) setOrphaned(ir *ingressroutev1.IngressRoute) {
 	b.orphaned[m] = true
 }
 
-// rootAllowed returns true if the ingressroute lives in a permitted root Namespace.
+// rootAllowed returns true if the ingressroute lives in a permitted root namespace.
 func (b *builder) rootAllowed(ir *ingressroutev1.IngressRoute) bool {
 	if len(b.source.IngressRouteRootNamespaces) == 0 {
 		return true
@@ -694,7 +694,7 @@ func (b *builder) processRoutes(ir *ingressroutev1.IngressRoute, prefixMatch str
 
 		namespace := route.Delegate.Namespace
 		if namespace == "" {
-			// we are delegating to another IngressRoute in the same Namespace
+			// we are delegating to another IngressRoute in the same namespace
 			namespace = ir.Namespace
 		}
 
