@@ -30,7 +30,7 @@ import (
 type KubernetesCache struct {
 	// IngressRouteRootNamespaces specifies the namespaces where root
 	// IngressRoutes can be defined. If empty, roots can be defined in any
-	// Namespace.
+	// namespace.
 	IngressRouteRootNamespaces []string
 
 	mu sync.RWMutex
@@ -76,7 +76,7 @@ type Meta struct {
 }
 
 // Insert inserts obj into the KubernetesCache.
-// If an object with a matching type, Name, and Namespace exists, it will be overwritten.
+// If an object with a matching type, name, and namespace exists, it will be overwritten.
 func (kc *KubernetesCache) Insert(obj interface{}) {
 	kc.mu.Lock()
 	defer kc.mu.Unlock()
@@ -118,7 +118,7 @@ func (kc *KubernetesCache) Insert(obj interface{}) {
 }
 
 // Remove removes obj from the KubernetesCache.
-// If no object with a matching type, Name, and Namespace exists in the DAG, no action is taken.
+// If no object with a matching type, name, and namespace exists in the DAG, no action is taken.
 func (kc *KubernetesCache) Remove(obj interface{}) {
 	switch obj := obj.(type) {
 	default:

@@ -24,7 +24,7 @@ import (
 )
 
 // A DAG represents a directed acylic graph of objects representing the relationship
-// between Kubernetes Ingress objects, the backend services, and Secret objects.
+// between Kubernetes Ingress objects, the backend Services, and Secret objects.
 // The DAG models these relationships as Roots and Vertices.
 type DAG struct {
 	// roots are the roots of this dag
@@ -102,7 +102,7 @@ type UpstreamValidation struct {
 	// CACertificate holds a reference to the Secret containing the CA to be used to
 	// verify the upstream connection.
 	CACertificate *Secret
-	// SubjectName holds an optional subject Name which Envoy will check against the
+	// SubjectName holds an optional subject name which Envoy will check against the
 	// certificate presented by the upstream.
 	SubjectName string
 }
@@ -115,7 +115,7 @@ func (r *Route) Visit(f func(Vertex)) {
 
 // A VirtualHost represents a named L4/L7 service.
 type VirtualHost struct {
-	// Name is the fully qualified domain Name of a network host,
+	// Name is the fully qualified domain name of a network host,
 	// as defined by RFC 3986.
 	Name string
 

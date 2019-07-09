@@ -591,8 +591,6 @@ func (b *builder) DAG(secrets map[Meta]Empty, services map[Meta]Empty) *DAG {
 		}
 	}
 	dag.statuses = b.statuses
-	//dag.secrets = secrets
-	//dag.services = services
 
 	return &dag
 }
@@ -745,7 +743,7 @@ func (b *builder) lookupUpstreamValidation(ir *ingressroutev1.IngressRoute, host
 
 	if uv.SubjectName == "" {
 		// UpstreamValidation is requested, but SAN is not provided
-		b.setStatus(Status{Object: ir, Status: StatusInvalid, Description: fmt.Sprintf("route %q: service %q: upstreamValidation requested but subject alt Name not found or misconfigured", route.Match, service.Name), Vhost: host})
+		b.setStatus(Status{Object: ir, Status: StatusInvalid, Description: fmt.Sprintf("route %q: service %q: upstreamValidation requested but subject alt name not found or misconfigured", route.Match, service.Name), Vhost: host})
 		return nil
 	}
 
@@ -791,7 +789,7 @@ func (b *builder) processTCPProxy(ir *ingressroutev1.IngressRoute, visited []*in
 
 	namespace := tcpproxy.Delegate.Namespace
 	if namespace == "" {
-		// we are delegating to another IngressRoute in the same Namespace
+		// we are delegating to another IngressRoute in the same namespace
 		namespace = ir.Namespace
 	}
 

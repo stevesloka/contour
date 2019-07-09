@@ -1306,7 +1306,7 @@ func TestDAGInsert(t *testing.T) {
 		},
 	}
 
-	// s2 is like s1 but with a different Name
+	// s2 is like s1 but with a different name
 	s2 := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "kuarder",
@@ -1432,7 +1432,7 @@ func TestDAGInsert(t *testing.T) {
 			},
 			want: listeners(),
 		},
-		"insert ingress w/ host Name and single backend": {
+		"insert ingress w/ host name and single backend": {
 			objs: []interface{}{
 				i3,
 			},
@@ -3044,7 +3044,7 @@ func TestDAGRootNamespaces(t *testing.T) {
 		},
 	}
 
-	// ir2 is like ir1, but in a different Namespace
+	// ir2 is like ir1, but in a different namespace
 	ir2 := &ingressroutev1.IngressRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "example-com",
@@ -3077,7 +3077,7 @@ func TestDAGRootNamespaces(t *testing.T) {
 			objs: []interface{}{ir1},
 			want: 1,
 		},
-		"single root Namespace with root ingressroute": {
+		"single root namespace with root ingressroute": {
 			rootNamespaces: []string{"allowed1"},
 			objs:           []interface{}{ir1},
 			want:           1,
@@ -3102,7 +3102,7 @@ func TestDAGRootNamespaces(t *testing.T) {
 			objs:           []interface{}{ir1},
 			want:           0,
 		},
-		"two root ingressroutes, one inside root Namespace, one outside": {
+		"two root ingressroutes, one inside root namespace, one outside": {
 			rootNamespaces: []string{"foo", "allowed2"},
 			objs:           []interface{}{ir1, ir2},
 			want:           1,
@@ -3269,7 +3269,7 @@ func TestDAGIngressRouteStatus(t *testing.T) {
 		},
 	}
 
-	// ir3 is invalid because it lives outside the roots Namespace
+	// ir3 is invalid because it lives outside the roots namespace
 	ir3 := &ingressroutev1.IngressRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "finance",
@@ -3507,9 +3507,9 @@ func TestDAGIngressRouteStatus(t *testing.T) {
 			objs: []*ingressroutev1.IngressRoute{ir2},
 			want: []Status{{Object: ir2, Status: "invalid", Description: `route "/foo": service "home": port must be in the range 1-65535`, Vhost: "example.com"}},
 		},
-		"root ingressroute outside of roots Namespace": {
+		"root ingressroute outside of roots namespace": {
 			objs: []*ingressroutev1.IngressRoute{ir3},
-			want: []Status{{Object: ir3, Status: "invalid", Description: "root IngressRoute cannot be defined in this Namespace"}},
+			want: []Status{{Object: ir3, Status: "invalid", Description: "root IngressRoute cannot be defined in this namespace"}},
 		},
 		"delegated route's match prefix does not match parent's prefix": {
 			objs: []*ingressroutev1.IngressRoute{ir1, ir4},
@@ -3828,7 +3828,7 @@ func TestSplitSecret(t *testing.T) {
 		secret, defns string
 		want          Meta
 	}{
-		"no Namespace": {
+		"no namespace": {
 			secret: "secret",
 			defns:  "default",
 			want: Meta{
@@ -3836,7 +3836,7 @@ func TestSplitSecret(t *testing.T) {
 				Namespace: "default",
 			},
 		},
-		"with Namespace": {
+		"with namespace": {
 			secret: "ns1/secret",
 			defns:  "default",
 			want: Meta{
@@ -3844,7 +3844,7 @@ func TestSplitSecret(t *testing.T) {
 				Namespace: "ns1",
 			},
 		},
-		"missing Namespace": {
+		"missing namespace": {
 			secret: "/secret",
 			defns:  "default",
 			want: Meta{
@@ -3852,7 +3852,7 @@ func TestSplitSecret(t *testing.T) {
 				Namespace: "default",
 			},
 		},
-		"missing secret Name": {
+		"missing secret name": {
 			secret: "secret/",
 			defns:  "default",
 			want: Meta{
