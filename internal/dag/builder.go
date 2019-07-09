@@ -117,6 +117,7 @@ func (b *builder) lookupTCPService(m Meta, port intstr.IntOrString) *TCPService 
 		return nil
 	}
 }
+
 func (b *builder) lookupService(m Meta, port intstr.IntOrString) Service {
 	if port.Type != intstr.Int {
 		// can't handle, give up

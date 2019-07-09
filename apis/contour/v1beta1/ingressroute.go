@@ -58,7 +58,7 @@ type TLS struct {
 type Route struct {
 	// Match defines the prefix match
 	Match string `json:"match"`
-	// services are the services to proxy traffic
+	// Services are the services to proxy traffic
 	Services []Service `json:"services,omitempty"`
 	// Delegate specifies that this route should be delegated to another IngressRoute
 	Delegate *Delegate `json:"delegate,omitempty"`
@@ -77,7 +77,7 @@ type Route struct {
 
 // TCPProxy contains the set of services to proxy TCP connections.
 type TCPProxy struct {
-	// services are the services to proxy traffic
+	// Services are the services to proxy traffic
 	Services []Service `json:"services,omitempty"`
 	// Delegate specifies that this tcpproxy should be delegated to another IngressRoute
 	Delegate *Delegate `json:"delegate,omitempty"`
