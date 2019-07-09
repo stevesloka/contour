@@ -60,14 +60,14 @@ type builder struct {
 
 // lookupHTTPService returns a HTTPService that matches the Meta and port supplied.
 func (b *builder) lookupHTTPService(m Meta, port intstr.IntOrString) *HTTPService {
+	// Service is used so save for reference later
+	b.cache.InsertService(m.Name, m.Namespace)
+
 	s := b.lookupService(m, port)
 	switch s := s.(type) {
 	case *HTTPService:
 		return s
 	case nil:
-		// Service is used so save for reference later
-		b.cache.InsertService(m.Name, m.Namespace)
-
 		svc, ok := b.source.services[m]
 		if !ok {
 			return nil
@@ -90,14 +90,14 @@ func (b *builder) lookupHTTPService(m Meta, port intstr.IntOrString) *HTTPServic
 
 // lookupTCPService returns a TCPService that matches the Meta and port supplied.
 func (b *builder) lookupTCPService(m Meta, port intstr.IntOrString) *TCPService {
+	// Service is used so save for reference later
+	b.cache.InsertService(m.Name, m.Namespace)
+
 	s := b.lookupService(m, port)
 	switch s := s.(type) {
 	case *TCPService:
 		return s
 	case nil:
-		// Service is used so save for reference later
-		b.cache.InsertService(m.Name, m.Namespace)
-
 		svc, ok := b.source.services[m]
 		if !ok {
 			return nil
@@ -118,15 +118,10 @@ func (b *builder) lookupTCPService(m Meta, port intstr.IntOrString) *TCPService 
 	}
 }
 func (b *builder) lookupService(m Meta, port intstr.IntOrString) Service {
-
 	if port.Type != intstr.Int {
 		// can't handle, give up
 		return nil
 	}
-
-	// Service is used so save for reference later
-	b.cache.InsertService(m.Name, m.Namespace)
-
 	sm := servicemeta{
 		name:      m.Name,
 		namespace: m.Namespace,
