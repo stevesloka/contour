@@ -14,6 +14,7 @@
 package contour
 
 import (
+	"fmt"
 	"path"
 	"sort"
 	"sync"
@@ -140,13 +141,18 @@ func (v *routeVisitor) visit(vertex dag.Vertex) {
 						}
 					}
 
+					// Merge all header conditions for this route
+					mergedHeaders := mergeHeaders(route.Conditions)
+					fmt.Println("-- mergedHeaders: ", mergedHeaders)
+
 					// Merge all pathPrefix conditions for this route
 					mergedPathPrefix := mergePathPrefixes(route.Conditions)
-					rr := envoy.Route(envoy.RoutePrefix(mergedPathPrefix), envoy.RouteRoute(route))
-					if route.HTTPSUpgrade {
-						rr.Action = envoy.UpgradeHTTPS()
+					if mergedPathPrefix != "" {
+						rr := envoy.Route(envoy.RoutePrefix(mergedPathPrefix), envoy.RouteRoute(route))
+						if route.HTTPSUpgrade {
+							rr.Action = envoy.UpgradeHTTPS()
+						}
 					}
-					routes = append(routes, rr)
 				})
 				if len(routes) < 1 {
 					return
@@ -201,6 +207,18 @@ func mergePathPrefixes(conditions []dag.Condition) string {
 		}
 	}
 	return mergedPath
+}
+
+func mergeHeaders(conditions []dag.Condition) []dag.HeaderCondition {
+	var headers []dag.HeaderCondition
+
+	for _, c := range conditions {
+		switch cond := c.(type) {
+		case *dag.HeaderCondition:
+			headers = append(headers, *cond)
+		}
+	}
+	return headers
 }
 
 type virtualHostsByName []*envoy_api_v2_route.VirtualHost

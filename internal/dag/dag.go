@@ -70,6 +70,17 @@ func (rc *RegexCondition) String() string {
 	return "regex: " + rc.Regex
 }
 
+type HeaderCondition struct {
+	Name      string
+	Value     string
+	MatchType string
+	Invert    bool
+}
+
+func (rc *HeaderCondition) String() string {
+	return "header: " + rc.Name
+}
+
 // Route defines the properties of a route to a Cluster.
 type Route struct {
 
