@@ -554,7 +554,7 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 			}
 
 			sw, commit := b.WithObject(delegate)
-			routes = append(routes, b.computeRoutes(sw, delegate, append(conditions, include.Conditions...), visited, enforceTLS)...)
+			routes = append(routes, b.computeRoutes(sw, delegate, appendConditions(sw, conditions, include.Conditions), visited, enforceTLS)...)
 			commit()
 
 			// dest is not an orphaned httpproxy, as there is an httpproxy that points to it
@@ -568,7 +568,7 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 		}
 
 		r := &Route{
-			Conditions:    httpProxyConditions(append(conditions, route.Conditions...)),
+			Conditions:    httpProxyConditions(appendConditions(sw, conditions, route.Conditions)),
 			Websocket:     route.EnableWebsockets,
 			HTTPSUpgrade:  routeEnforceTLS(enforceTLS, route.PermitInsecure && !b.DisablePermitInsecure),
 			PrefixRewrite: route.PrefixRewrite,
@@ -612,6 +612,27 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 		routes = append(routes, r)
 	}
 	return routes
+}
+
+func appendConditions(sw *ObjectStatusWriter, slice, elems []projcontour.Condition) []projcontour.Condition {
+	// Look for duplicate headers on conditions
+	// if found, set error condition on HTTPProxy
+	for _, s := range slice {
+		sVal := ""
+		if s.Header == nil {
+			continue
+		}
+		sVal = s.Header.Name
+		for _, e := range elems {
+			if e.Header == nil {
+				continue
+			}
+			if sVal == e.Header.Name {
+				sw.SetInvalid(fmt.Sprintf("header %q: cannot specify duplicate headers in the same route", sVal))
+			}
+		}
+	}
+	return append(slice, elems...)
 }
 
 // buildDAG returns a *DAG representing the current state of this builder.
