@@ -474,11 +474,16 @@ func (b *Builder) computeHTTPProxy(proxy *projcontour.HTTPProxy) {
 		}
 	}
 
-	for _, route := range b.computeRoutes(sw, proxy, nil, nil, enforceTLS) {
-		b.lookupVirtualHost(host).addRoute(route)
-		b.lookupSecureVirtualHost(host).addRoute(route)
+	err, routes := b.computeRoutes(sw, proxy, nil, nil, enforceTLS)
+	if err != nil {
+		sw.SetInvalid(err.Error())
+	} else {
+		for _, route := range routes {
+			b.lookupVirtualHost(host).addRoute(route)
+			b.lookupSecureVirtualHost(host).addRoute(route)
+		}
+		sw.SetValid()
 	}
-	sw.SetValid()
 }
 
 // httpProxyConditions converts a list of HTTPProxy conditions to dag Conditions.
@@ -514,11 +519,11 @@ func httpProxyConditions(conds []projcontour.Condition) []Condition {
 	return c
 }
 
-func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPProxy, conditions []projcontour.Condition, visited []*projcontour.HTTPProxy, enforceTLS bool) []*Route {
+func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPProxy, conditions []projcontour.Condition, visited []*projcontour.HTTPProxy, enforceTLS bool) (error, []*Route) {
 	for _, v := range visited {
 		if v.Name == proxy.Name && v.Namespace == proxy.Namespace {
 			sw.SetInvalid("loop")
-			return nil
+			return fmt.Errorf("loop"), nil
 		}
 	}
 
@@ -528,12 +533,28 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 	for _, include := range proxy.Spec.Includes {
 		if delegate, ok := b.Source.httpproxies[Meta{name: include.Name, namespace: include.Namespace}]; ok {
 			if delegate.Spec.VirtualHost != nil {
-				sw.SetInvalid("root httpproxy cannot delegate to another root httpproxy")
-				return nil
+				return fmt.Errorf("root httpproxy cannot delegate to another root httpproxy"), nil
+			}
+
+			// ensure we are not following an edge that produces a cycle
+			var path []string
+			for _, vir := range visited {
+				path = append(path, fmt.Sprintf("%s/%s", vir.Namespace, vir.Name))
+			}
+			for _, vir := range visited {
+				if delegate.Name == vir.Name && delegate.Namespace == vir.Namespace {
+					path = append(path, fmt.Sprintf("%s/%s", delegate.Namespace, delegate.Name))
+					return fmt.Errorf("include creates a delegation cycle: %s", strings.Join(path, " -> ")), nil
+				}
 			}
 
 			sw, commit := b.WithObject(delegate)
-			routes = append(routes, b.computeRoutes(sw, delegate, append(conditions, include.Conditions...), visited, enforceTLS)...)
+			err, routes := b.computeRoutes(sw, delegate, append(conditions, include.Conditions...), visited, enforceTLS)
+			if err != nil {
+				sw.SetInvalid(err.Error())
+				continue
+			}
+			routes = append(routes, routes...)
 			commit()
 
 			// dest is not an orphaned httpproxy, as there is an httpproxy that points to it
@@ -557,16 +578,13 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 
 		for _, service := range route.Services {
 			if service.Port < 1 || service.Port > 65535 {
-				sw.SetInvalid(fmt.Sprintf("route %q: service %q: port must be in the range 1-65535", "??", service.Name))
-				return nil
+				return fmt.Errorf("service %q: port must be in the range 1-65535", service.Name), nil
 			}
 			m := Meta{name: service.Name, namespace: proxy.Namespace}
 			s := b.lookupService(m, intstr.FromInt(service.Port))
 
 			if s == nil {
-				msg := fmt.Sprintf("Service [%s:%d] is invalid or missing", service.Name, service.Port)
-				sw.SetInvalid(msg)
-				return nil
+				return fmt.Errorf("Service [%s:%d] is invalid or missing", service.Name, service.Port), nil
 			}
 
 			var uv *UpstreamValidation
@@ -575,8 +593,7 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 				// we can only validate TLS connections to services that talk TLS
 				uv, err = b.lookupUpstreamValidation("??", service.Name, service.UpstreamValidation, proxy.Namespace)
 				if err != nil {
-					sw.SetInvalid(err.Error())
-					return nil
+					return fmt.Errorf(err.Error()), nil
 				}
 			}
 
@@ -590,7 +607,7 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 		}
 		routes = append(routes, r)
 	}
-	return routes
+	return nil, routes
 }
 
 // buildDAG returns a *DAG representing the current state of this builder.
