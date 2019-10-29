@@ -215,7 +215,7 @@ certs/envoycert.pem: certs/CAkey.pem certs/envoykey.pem
 
 .PHONY: site-devel
 site-devel: ## Launch the website in a Docker container
-	docker run --publish $(JEKYLL_PORT):$(JEKYLL_PORT) -v $$(pwd)/site:/site -it $(JEKYLL_IMAGE) \
+	docker run --publish $(JEKYLL_PORT):$(JEKYLL_PORT) -p 35729:35729 -v $$(pwd)/site:/site -it $(JEKYLL_IMAGE) \
 		bash -c "cd /site && bundle install && bundle exec jekyll serve --host 0.0.0.0 --port $(JEKYLL_PORT) --livereload"
 
 .PHONY: metrics-docs

@@ -1,8 +1,3 @@
----
-title: IngressRoute Reference
-layout: page
----
-
 <div id="toc"></div>
 
 The [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) object was added to Kubernetes in version 1.1 to describe properties of a cluster-wide reverse HTTP proxy.

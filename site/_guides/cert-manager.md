@@ -534,4 +534,4 @@ $ curl -v http://httpbin.davecheney.com/get
 [httpbin]: /img/cert-manager/httpbin.png
 [5]: https://letsencrypt.org/getting-started/
 [6]: #3-deploy-your-first-HTTPS-site
-[7]: {% link _guides/deploy-options.md %}#get-your-hostname-or-ip-address
+[7]: {% link docs/v1.0.0/deploy-options.md %}#get-your-hostname-or-ip-address
