@@ -18,7 +18,7 @@ toc:
   - title: Deploy
     subfolderitems:
       - page: Deployment
-        url: /guides/deploy-options/
+        url: /deploy-options/
       - page: Upgrade
         link: /resources/upgrading
   - title: Guides
