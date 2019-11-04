@@ -18,7 +18,7 @@ toc:
   - title: Deploy
     subfolderitems:
       - page: Deployment
-        url: /guides/deploy-options/
+        url: /deploy-options/
       - page: Upgrade
         link: /resources/upgrading
   - title: Guides
@@ -55,9 +55,3 @@ toc:
     subfolderitems:
       - page: Start Contributing
         url: /start-contributing
-      - page: Development
-        url: /development
-      - page: Build from source
-        url: /build-from-source
-      - page: Run locally
-        url: /run-locally
