@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: siege
+spec:
+  template:
+    spec:
+      containers:
+        - name: siege
+          image: sudermanjr/siege:4.0.4
+          env:
+            - name: URL
+              value: "https://demo.projectcontour.io"
+            - name: TIMEOUT
+              value: "60"
+            - name: PARSER
+              value: "false"
+            - name: CONCURRENT
+              value: "1"
+            - name: LIMIT
+              value: "100"
+            - name: TIME
+              value: "30s"
+      restartPolicy: Never
+  backoffLimit: 1
+  parallelism: 10
+  completions: 10

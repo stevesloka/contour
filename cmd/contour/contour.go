@@ -40,8 +40,10 @@ func main() {
 	log := logrus.StandardLogger()
 	app := kingpin.New("contour", "Contour Kubernetes ingress controller.")
 
-	bootstrap, bootstrapCtx := registerBootstrap(app)
+	envoy := app.Command("envoy", "Sub-command for envoy actions.")
+	shutdownManager, shutdownManagerCtx := registerShutdownManager(envoy, log)
 
+	bootstrap, bootstrapCtx := registerBootstrap(app)
 	certgenApp, certgenConfig := registerCertGen(app)
 
 	cli := app.Command("cli", "A CLI client for the Contour Kubernetes ingress controller.")
@@ -67,6 +69,8 @@ func main() {
 
 	args := os.Args[1:]
 	switch kingpin.MustParse(app.Parse(args)) {
+	case shutdownManager.FullCommand():
+		check(doShutdownManager(shutdownManagerCtx))
 	case bootstrap.FullCommand():
 		doBootstrap(bootstrapCtx)
 	case certgenApp.FullCommand():
