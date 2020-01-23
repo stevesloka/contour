@@ -355,7 +355,7 @@ func (s *Service) Visit(func(Vertex)) {
 	// Services are leaves in the DAG.
 }
 
-// Cluster holds the connetion specific parameters that apply to
+// Cluster holds the connection specific parameters that apply to
 // traffic routed to an upstream service.
 type Cluster struct {
 
@@ -376,8 +376,11 @@ type Cluster struct {
 	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/cds.proto#envoy-api-enum-cluster-lbpolicy
 	LoadBalancerPolicy string
 
-	// Cluster health check policy.
-	*HealthCheckPolicy
+	// Cluster http health check policy.
+	*HTTPHealthCheckPolicy
+
+	// Cluster tcp health check policy.
+	*TCPHealthCheckPolicy
 
 	// RequestHeadersPolicy defines how headers are managed during forwarding
 	RequestHeadersPolicy *HeadersPolicy
@@ -415,10 +418,18 @@ func (s *Secret) PrivateKey() []byte {
 	return s.Object.Data[v1.TLSPrivateKeyKey]
 }
 
-// Cluster health check policy.
-type HealthCheckPolicy struct {
+// Cluster health check policy for HTTP Routes
+type HTTPHealthCheckPolicy struct {
 	Path               string
 	Host               string
+	Interval           time.Duration
+	Timeout            time.Duration
+	UnhealthyThreshold uint32
+	HealthyThreshold   uint32
+}
+
+// Cluster health check policy for TCP Proxies
+type TCPHealthCheckPolicy struct {
 	Interval           time.Duration
 	Timeout            time.Duration
 	UnhealthyThreshold uint32

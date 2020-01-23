@@ -23,7 +23,7 @@ import (
 	"github.com/projectcontour/contour/internal/protobuf"
 )
 
-func TestHealthCheck(t *testing.T) {
+func TestHTTPHealthCheck(t *testing.T) {
 	tests := map[string]struct {
 		cluster *dag.Cluster
 		want    *envoy_api_v2_core.HealthCheck
@@ -32,7 +32,7 @@ func TestHealthCheck(t *testing.T) {
 		// when hc is nil, so if hc is not nil, at least one of the parameters on it must be set.
 		"blank healthcheck": {
 			cluster: &dag.Cluster{
-				HealthCheckPolicy: new(dag.HealthCheckPolicy),
+				HTTPHealthCheckPolicy: new(dag.HTTPHealthCheckPolicy),
 			},
 			want: &envoy_api_v2_core.HealthCheck{
 				Timeout:            protobuf.Duration(hcTimeout),
@@ -49,7 +49,7 @@ func TestHealthCheck(t *testing.T) {
 		},
 		"healthcheck path only": {
 			cluster: &dag.Cluster{
-				HealthCheckPolicy: &dag.HealthCheckPolicy{
+				HTTPHealthCheckPolicy: &dag.HTTPHealthCheckPolicy{
 					Path: "/healthy",
 				},
 			},
@@ -68,7 +68,7 @@ func TestHealthCheck(t *testing.T) {
 		},
 		"explicit healthcheck": {
 			cluster: &dag.Cluster{
-				HealthCheckPolicy: &dag.HealthCheckPolicy{
+				HTTPHealthCheckPolicy: &dag.HTTPHealthCheckPolicy{
 					Host:               "foo-bar-host",
 					Path:               "/healthy",
 					Timeout:            99 * time.Second,
@@ -94,7 +94,74 @@ func TestHealthCheck(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			got := healthCheck(tc.cluster)
+			got := httpHealthCheck(tc.cluster)
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Fatal(diff)
+			}
+
+		})
+	}
+}
+
+func TestTCPHealthCheck(t *testing.T) {
+	tests := map[string]struct {
+		cluster *dag.Cluster
+		want    *envoy_api_v2_core.HealthCheck
+	}{
+		// this is an odd case because contour.edshealthcheck will not call envoy.HealthCheck
+		// when hc is nil, so if hc is not nil, at least one of the parameters on it must be set.
+		"blank healthcheck": {
+			cluster: &dag.Cluster{
+				TCPHealthCheckPolicy: new(dag.TCPHealthCheckPolicy),
+			},
+			want: &envoy_api_v2_core.HealthCheck{
+				Timeout:            protobuf.Duration(hcTimeout),
+				Interval:           protobuf.Duration(hcInterval),
+				UnhealthyThreshold: protobuf.UInt32(3),
+				HealthyThreshold:   protobuf.UInt32(2),
+				HealthChecker: &envoy_api_v2_core.HealthCheck_TcpHealthCheck_{
+					TcpHealthCheck: &envoy_api_v2_core.HealthCheck_TcpHealthCheck{},
+				},
+			},
+		},
+		"explicit healthcheck": {
+			cluster: &dag.Cluster{
+				TCPHealthCheckPolicy: &dag.TCPHealthCheckPolicy{
+					Timeout:            99 * time.Second,
+					Interval:           98 * time.Second,
+					UnhealthyThreshold: 97,
+					HealthyThreshold:   96,
+				},
+			},
+			want: &envoy_api_v2_core.HealthCheck{
+				Timeout:            protobuf.Duration(99 * time.Second),
+				Interval:           protobuf.Duration(98 * time.Second),
+				UnhealthyThreshold: protobuf.UInt32(97),
+				HealthyThreshold:   protobuf.UInt32(96),
+				HealthChecker: &envoy_api_v2_core.HealthCheck_TcpHealthCheck_{
+					TcpHealthCheck: &envoy_api_v2_core.HealthCheck_TcpHealthCheck{},
+				},
+			},
+		},
+		"defaults": {
+			cluster: &dag.Cluster{
+				TCPHealthCheckPolicy: &dag.TCPHealthCheckPolicy{},
+			},
+			want: &envoy_api_v2_core.HealthCheck{
+				Timeout:            protobuf.Duration(hcTimeout),
+				Interval:           protobuf.Duration(hcInterval),
+				UnhealthyThreshold: protobuf.UInt32(3),
+				HealthyThreshold:   protobuf.UInt32(2),
+				HealthChecker: &envoy_api_v2_core.HealthCheck_TcpHealthCheck_{
+					TcpHealthCheck: &envoy_api_v2_core.HealthCheck_TcpHealthCheck{},
+				},
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			got := tcpHealthCheck(tc.cluster)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Fatal(diff)
 			}

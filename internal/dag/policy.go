@@ -147,11 +147,13 @@ func timeoutPolicy(tp *projcontour.TimeoutPolicy) *TimeoutPolicy {
 		IdleTimeout:     parseTimeout(tp.Idle),
 	}
 }
-func ingressrouteHealthCheckPolicy(hc *ingressroutev1.HealthCheck) *HealthCheckPolicy {
+
+// Returns a *HealthCheckPolicy for a IngressRoute Route
+func ingressrouteRouteHealthCheckPolicy(hc *ingressroutev1.HealthCheck) *HTTPHealthCheckPolicy {
 	if hc == nil {
 		return nil
 	}
-	return &HealthCheckPolicy{
+	return &HTTPHealthCheckPolicy{
 		Path:               hc.Path,
 		Host:               hc.Host,
 		Interval:           time.Duration(hc.IntervalSeconds) * time.Second,
@@ -161,11 +163,25 @@ func ingressrouteHealthCheckPolicy(hc *ingressroutev1.HealthCheck) *HealthCheckP
 	}
 }
 
-func healthCheckPolicy(hc *projcontour.HTTPHealthCheckPolicy) *HealthCheckPolicy {
+// Returns a *HealthCheckPolicy for a IngressRoute TCP Proxy
+func ingressrouteTCPHealthCheckPolicy(hc *ingressroutev1.HealthCheck) *TCPHealthCheckPolicy {
 	if hc == nil {
 		return nil
 	}
-	return &HealthCheckPolicy{
+	return &TCPHealthCheckPolicy{
+		Interval:           time.Duration(hc.IntervalSeconds) * time.Second,
+		Timeout:            time.Duration(hc.TimeoutSeconds) * time.Second,
+		UnhealthyThreshold: hc.UnhealthyThresholdCount,
+		HealthyThreshold:   hc.HealthyThresholdCount,
+	}
+}
+
+// Returns a *HealthCheckPolicy for a IngressRoute Route
+func healthCheckPolicy(hc *projcontour.HTTPHealthCheckPolicy) *HTTPHealthCheckPolicy {
+	if hc == nil {
+		return nil
+	}
+	return &HTTPHealthCheckPolicy{
 		Path:               hc.Path,
 		Host:               hc.Host,
 		Interval:           time.Duration(hc.IntervalSeconds) * time.Second,
