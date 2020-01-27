@@ -23,4 +23,16 @@ to fail, which in turn causes that instance of Envoy to stop accepting new conne
 
 The main problem is that the `preStop` hook (which sends the `/healthcheck/fail` request) does not wait until Envoy has drained all connections.
 
+## High-Level Design
+
 This design looks to add a new component to Contour which will allow for a way to understand if open connections exist in Envoy before sending a `SIGTERM`.
+
+1. A new sub-command of Contour named `healthcheck` which will serve `/envoy/healthcheck`
+2. Upon a request to this endpoint, it will respond with 200 if Envoy can be killed and 503 if not
+
+## Detailed Design
+
+1. A new sub-command will be added to Contour which serves up 
+2. 
+2. This will serve up an endpoint named `/envoy/healthcheck/fail` which will 
+3. 
