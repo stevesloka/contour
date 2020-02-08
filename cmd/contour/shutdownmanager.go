@@ -108,8 +108,6 @@ func getOpenConnections(url, prometheusStat string) (int, error) {
 	return openConnections, nil
 }
 
-//sum(envoy_http_downstream_cx_active{envoy_http_conn_manager_prefix="ingress_http"}) by (kubernetes_pod_name)
-
 func doShutdownManager(config *shutdownmanagerContext) error {
 	var g workgroup.Group
 
