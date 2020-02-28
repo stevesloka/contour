@@ -827,6 +827,21 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 				r.Clusters = append(r.Clusters, c)
 			}
 		}
+
+		m := Meta{name: fmt.Sprintf("%s", r.Name), namespace: proxy.Namespace}
+		s := b.lookupService(m, intstr.FromInt(service.Port))
+		c := &Cluster{
+			Upstream:              s,
+			LoadBalancerPolicy:    loadBalancerPolicy(route.LoadBalancerPolicy),
+			Weight:                uint32(service.Weight),
+			HTTPHealthCheckPolicy: httpHealthCheckPolicy(route.HealthCheckPolicy),
+			UpstreamValidation:    uv,
+			RequestHeadersPolicy:  reqHP,
+			ResponseHeadersPolicy: respHP,
+			Protocol:              protocol,
+		}
+		r.Clusters = append(r.Clusters, c)
+
 		routes = append(routes, r)
 	}
 
