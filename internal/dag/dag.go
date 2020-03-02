@@ -358,6 +358,8 @@ func (s *Service) Visit(func(Vertex)) {
 // Cluster holds the connetion specific parameters that apply to
 // traffic routed to an upstream service.
 type Cluster struct {
+	// (SAS) New!
+	Name string
 
 	// Upstream is the backend Kubernetes service traffic arriving
 	// at this Cluster will be forwarded too.

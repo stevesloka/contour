@@ -55,7 +55,13 @@ func Cluster(c *dag.Cluster) *v2.Cluster {
 	case 0:
 		// external name not set, cluster will be discovered via EDS
 		cluster.ClusterDiscoveryType = ClusterDiscoveryType(v2.Cluster_EDS)
-		cluster.EdsClusterConfig = edsconfig("contour", service)
+		cluster.EdsClusterConfig = &v2.Cluster_EdsClusterConfig{
+			EdsConfig:   ConfigSource(cluster.Name),
+			ServiceName: cluster.Name, // TODO(SAS) Join in namespace, etc
+		}
+
+		//TODO(SAS)
+		//cluster.EdsClusterConfig = edsconfig("contour", service)
 	default:
 		// external name set, use hard coded DNS name
 		cluster.ClusterDiscoveryType = ClusterDiscoveryType(v2.Cluster_STRICT_DNS)
@@ -181,6 +187,12 @@ func edshealthcheck(c *dag.Cluster) []*envoy_api_v2_core.HealthCheck {
 
 // Clustername returns the name of the CDS cluster for this service.
 func Clustername(cluster *dag.Cluster) string {
+
+	// TODO(SAS)
+	if len(cluster.Name) > 0 {
+		return cluster.Name
+	}
+
 	service := cluster.Upstream
 	buf := cluster.LoadBalancerPolicy
 	if hc := cluster.HTTPHealthCheckPolicy; hc != nil {

@@ -828,17 +828,19 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 			}
 		}
 
-		m := Meta{name: fmt.Sprintf("%s", r.Name), namespace: proxy.Namespace}
-		s := b.lookupService(m, intstr.FromInt(service.Port))
+		// TODO(SAS) Using only the PathCondition as the unique name
+		m := Meta{name: route.Services[0].Name, namespace: proxy.Namespace}
+		s := b.lookupService(m, intstr.FromInt(route.Services[0].Port))
 		c := &Cluster{
-			Upstream:              s,
-			LoadBalancerPolicy:    loadBalancerPolicy(route.LoadBalancerPolicy),
-			Weight:                uint32(service.Weight),
+			Name:               r.PathCondition.String(),
+			Upstream:           s,
+			LoadBalancerPolicy: loadBalancerPolicy(route.LoadBalancerPolicy),
+			//Weight:                uint32(service.Weight),
 			HTTPHealthCheckPolicy: httpHealthCheckPolicy(route.HealthCheckPolicy),
-			UpstreamValidation:    uv,
+			//UpstreamValidation:    uv,
 			RequestHeadersPolicy:  reqHP,
 			ResponseHeadersPolicy: respHP,
-			Protocol:              protocol,
+			Protocol:              "",
 		}
 		r.Clusters = append(r.Clusters, c)
 
