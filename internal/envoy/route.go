@@ -298,6 +298,7 @@ func RouteConfiguration(name string, virtualhosts ...*envoy_api_v2_route.Virtual
 		RequestHeadersToAdd: Headers(
 			AppendHeader("x-request-start", "t=%START_TIME(%s.%3f)%"),
 		),
+		ValidateClusters: protobuf.Bool(true),
 	}
 }
 
