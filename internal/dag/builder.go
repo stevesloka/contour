@@ -15,6 +15,7 @@ package dag
 
 import (
 	"fmt"
+	"github.com/projectcontour/contour/internal/contour"
 	"sort"
 	"strconv"
 	"strings"
@@ -49,6 +50,8 @@ type Builder struct {
 	orphaned map[Meta]bool
 
 	StatusWriter
+
+	epTranslator *contour.EndpointsTranslator
 }
 
 // Build builds a new DAG.
@@ -763,6 +766,7 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 
 		}
 
+		var upstreamServiceNames []string
 		for _, service := range route.Services {
 			if service.Port < 1 || service.Port > 65535 {
 				sw.SetInvalid("service %q: port must be in the range 1-65535", service.Name)
@@ -805,6 +809,8 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 				return nil
 			}
 
+			upstreamServiceNames = append(upstreamServiceNames, s.Name)
+
 			c := &Cluster{
 				Upstream:              s,
 				LoadBalancerPolicy:    loadBalancerPolicy(route.LoadBalancerPolicy),
@@ -842,6 +848,7 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 			ResponseHeadersPolicy: respHP,
 			Protocol:              "",
 		}
+		b.epTranslator.AddRouteCluster(m.name, upstreamServiceNames)
 		r.Clusters = append(r.Clusters, c)
 
 		routes = append(routes, r)

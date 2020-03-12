@@ -34,6 +34,13 @@ import (
 type EndpointsTranslator struct {
 	logrus.FieldLogger
 	clusterLoadAssignmentCache
+
+	// routeClusters uses the routeName as the key and has a set of services that are a part of that cluster set
+	routeClusters map[string][]string
+}
+
+func (e *EndpointsTranslator) AddRouteCluster(name string, clusters []string) {
+	e.routeClusters[name] = clusters
 }
 
 func (e *EndpointsTranslator) OnAdd(obj interface{}) {
@@ -162,6 +169,8 @@ func (e *EndpointsTranslator) recomputeClusterLoadAssignment(oldep, newep *v1.En
 				lbendpoints = append(lbendpoints, envoy.LBEndpoint(addr))
 			}
 
+			//(SAS) Are there any other clusters that this endpoint should be a part of?
+
 			cla := &v2.ClusterLoadAssignment{
 				ClusterName: servicename(newep.ObjectMeta, p.Name),
 				Endpoints: []*envoy_api_v2_endpoint.LocalityLbEndpoints{{
@@ -186,7 +195,6 @@ func (e *EndpointsTranslator) recomputeClusterLoadAssignment(oldep, newep *v1.En
 			}
 		}
 	}
-
 }
 
 type clusterLoadAssignmentCache struct {
