@@ -14,6 +14,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -21,6 +22,13 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+
+	api "github.com/envoyproxy/go-control-plane/envoy/api/v2"
+	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v2"
+	cache "github.com/envoyproxy/go-control-plane/pkg/cache/v2"
+	xds "github.com/envoyproxy/go-control-plane/pkg/server/v2"
+
+	"google.golang.org/grpc"
 
 	"github.com/projectcontour/contour/internal/annotation"
 	"github.com/projectcontour/contour/internal/contour"
@@ -303,6 +311,27 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 			eventHandler.CacheHandler.SecretCache.TypeURL():   &eventHandler.CacheHandler.SecretCache,
 			et.TypeURL(): et,
 		}
+
+		// BEGIN STEVE
+
+		snapshotCache := cache.NewSnapshotCache(false, cache.IDHash{}, nil)
+		server := xds.NewServer(context.Background(), snapshotCache, nil)
+		grpcServer := grpc.NewServer()
+		lis, _ := net.Listen("tcp", ":8080")
+
+		discovery.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
+		api.RegisterEndpointDiscoveryServiceServer(grpcServer, server)
+		api.RegisterClusterDiscoveryServiceServer(grpcServer, server)
+		api.RegisterRouteDiscoveryServiceServer(grpcServer, server)
+		api.RegisterListenerDiscoveryServiceServer(grpcServer, server)
+		go func() {
+			if err := grpcServer.Serve(lis); err != nil {
+				// error handling
+			}
+		}()
+
+		// END STEVE
+
 		opts := ctx.grpcOptions()
 		s := cgrpc.NewAPI(log, resources, registry, opts...)
 		addr := net.JoinHostPort(ctx.xdsAddr, strconv.Itoa(ctx.xdsPort))
