@@ -77,6 +77,9 @@ func Cluster(c *dag.Cluster) *v2.Cluster {
 
 	switch c.Protocol {
 	case "tls":
+
+		fmt.Println("------ externalName: ", service.ExternalName)
+
 		cluster.TransportSocket = UpstreamTLSTransportSocket(
 			UpstreamTLSContext(
 				c.UpstreamValidation,

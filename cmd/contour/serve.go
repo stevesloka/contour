@@ -23,6 +23,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
+
 	api "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v2"
 	cache "github.com/envoyproxy/go-control-plane/pkg/cache/v2"
@@ -34,7 +36,6 @@ import (
 	"github.com/projectcontour/contour/internal/contour"
 	"github.com/projectcontour/contour/internal/dag"
 	"github.com/projectcontour/contour/internal/debug"
-	cgrpc "github.com/projectcontour/contour/internal/grpc"
 	"github.com/projectcontour/contour/internal/httpsvc"
 	"github.com/projectcontour/contour/internal/k8s"
 	"github.com/projectcontour/contour/internal/metrics"
@@ -304,56 +305,60 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		}
 		log.Printf("informer caches synced")
 
-		resources := map[string]cgrpc.Resource{
-			eventHandler.CacheHandler.ClusterCache.TypeURL():  &eventHandler.CacheHandler.ClusterCache,
-			eventHandler.CacheHandler.RouteCache.TypeURL():    &eventHandler.CacheHandler.RouteCache,
-			eventHandler.CacheHandler.ListenerCache.TypeURL(): &eventHandler.CacheHandler.ListenerCache,
-			eventHandler.CacheHandler.SecretCache.TypeURL():   &eventHandler.CacheHandler.SecretCache,
-			et.TypeURL(): et,
-		}
+		//resources := map[string]cgrpc.Resource{
+		//	eventHandler.CacheHandler.ClusterCache.TypeURL():  &eventHandler.CacheHandler.ClusterCache,
+		//	eventHandler.CacheHandler.RouteCache.TypeURL():    &eventHandler.CacheHandler.RouteCache,
+		//	eventHandler.CacheHandler.ListenerCache.TypeURL(): &eventHandler.CacheHandler.ListenerCache,
+		//	eventHandler.CacheHandler.SecretCache.TypeURL():   &eventHandler.CacheHandler.SecretCache,
+		//	et.TypeURL(): et,
+		//}
 
 		// BEGIN STEVE
+		var clusters, endpoints, routes, listeners, runtimes []types.Resource
+
+		//eventHandler.CacheHandler.ClusterCache.Cnt
+		eventHandler.CacheHandler.Cnt = clusters
 
 		snapshotCache := cache.NewSnapshotCache(false, cache.IDHash{}, nil)
+		snapshot := cache.NewSnapshot("1.0", endpoints, clusters, routes, listeners, runtimes)
+		_ = snapshotCache.SetSnapshot("node1", snapshot)
+
 		server := xds.NewServer(context.Background(), snapshotCache, nil)
 		grpcServer := grpc.NewServer()
-		lis, _ := net.Listen("tcp", ":8080")
+
+		addr := net.JoinHostPort(ctx.xdsAddr, strconv.Itoa(ctx.xdsPort))
+		lis, _ := net.Listen("tcp", addr)
 
 		discovery.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
 		api.RegisterEndpointDiscoveryServiceServer(grpcServer, server)
 		api.RegisterClusterDiscoveryServiceServer(grpcServer, server)
 		api.RegisterRouteDiscoveryServiceServer(grpcServer, server)
 		api.RegisterListenerDiscoveryServiceServer(grpcServer, server)
-		go func() {
-			if err := grpcServer.Serve(lis); err != nil {
-				// error handling
-			}
-		}()
 
 		// END STEVE
 
-		opts := ctx.grpcOptions()
-		s := cgrpc.NewAPI(log, resources, registry, opts...)
-		addr := net.JoinHostPort(ctx.xdsAddr, strconv.Itoa(ctx.xdsPort))
-		l, err := net.Listen("tcp", addr)
-		if err != nil {
-			return err
-		}
-
-		log = log.WithField("address", addr)
-		if ctx.PermitInsecureGRPC {
-			log = log.WithField("insecure", true)
-		}
+		//opts := ctx.grpcOptions()
+		//s := cgrpc.NewAPI(log, resources, registry, opts...)
+		//addr := net.JoinHostPort(ctx.xdsAddr, strconv.Itoa(ctx.xdsPort))
+		//l, err := net.Listen("tcp", addr)
+		//if err != nil {
+		//	return err
+		//}
+		//
+		//log = log.WithField("address", addr)
+		//if ctx.PermitInsecureGRPC {
+		//	log = log.WithField("insecure", true)
+		//}
 
 		log.Info("started xDS server")
 		defer log.Info("stopped xDS server")
 
 		go func() {
 			<-stop
-			s.Stop()
+			grpcServer.Stop()
 		}()
 
-		return s.Serve(l)
+		return grpcServer.Serve(lis)
 	})
 
 	// step 14. Setup SIGTERM handler

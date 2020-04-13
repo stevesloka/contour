@@ -14,8 +14,11 @@
 package contour
 
 import (
+	"fmt"
 	"sort"
 	"sync"
+
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 
 	resource "github.com/envoyproxy/go-control-plane/pkg/resource/v2"
 
@@ -31,6 +34,7 @@ import (
 type ClusterCache struct {
 	mu     sync.Mutex
 	values map[string]*v2.Cluster
+	Cnt    []types.Resource
 	Cond
 }
 
@@ -40,6 +44,10 @@ func (c *ClusterCache) Update(v map[string]*v2.Cluster) {
 	defer c.mu.Unlock()
 
 	c.values = v
+	c.Cnt = c.GetContents()
+
+	fmt.Println("---- CNt: ", c.Cnt)
+
 	c.Cond.Notify()
 }
 
@@ -53,6 +61,18 @@ func (c *ClusterCache) Contents() []proto.Message {
 	}
 	sort.Stable(sorter.For(values))
 	return protobuf.AsMessages(values)
+}
+
+// Contents returns a copy of the cache's contents.
+func (c *ClusterCache) GetContents() []types.Resource {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	var values []*v2.Cluster
+	for _, v := range c.values {
+		values = append(values, v)
+	}
+	sort.Stable(sorter.For(values))
+	return protobuf.AsTypesMessages(values)
 }
 
 func (c *ClusterCache) Query(names []string) []proto.Message {

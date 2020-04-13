@@ -18,6 +18,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/golang/protobuf/ptypes/wrappers"
@@ -55,6 +57,24 @@ func AsMessages(messages interface{}) []proto.Message {
 	}
 
 	protos := make([]proto.Message, v.Len())
+
+	for i := range protos {
+		protos[i] = v.Index(i).Interface().(proto.Message)
+	}
+
+	return protos
+}
+
+// AsTypesMessages casts the given slice of values (that implement the proto.Message
+// interface) to a slice of proto.Message. If the length of the slice is 0, it
+// returns nil.
+func AsTypesMessages(messages interface{}) []types.Resource {
+	v := reflect.ValueOf(messages)
+	if v.Len() == 0 {
+		return nil
+	}
+
+	protos := make([]types.Resource, v.Len())
 
 	for i := range protos {
 		protos[i] = v.Index(i).Interface().(proto.Message)
