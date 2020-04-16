@@ -14,7 +14,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"os"
@@ -23,14 +22,9 @@ import (
 	"syscall"
 	"time"
 
+	cgrpc "github.com/projectcontour/contour/internal/grpc"
+
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
-
-	api "github.com/envoyproxy/go-control-plane/envoy/api/v2"
-	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v2"
-	cache "github.com/envoyproxy/go-control-plane/pkg/cache/v2"
-	xds "github.com/envoyproxy/go-control-plane/pkg/server/v2"
-
-	"google.golang.org/grpc"
 
 	"github.com/projectcontour/contour/internal/annotation"
 	"github.com/projectcontour/contour/internal/contour"
@@ -305,60 +299,30 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		}
 		log.Printf("informer caches synced")
 
-		//resources := map[string]cgrpc.Resource{
-		//	eventHandler.CacheHandler.ClusterCache.TypeURL():  &eventHandler.CacheHandler.ClusterCache,
-		//	eventHandler.CacheHandler.RouteCache.TypeURL():    &eventHandler.CacheHandler.RouteCache,
-		//	eventHandler.CacheHandler.ListenerCache.TypeURL(): &eventHandler.CacheHandler.ListenerCache,
-		//	eventHandler.CacheHandler.SecretCache.TypeURL():   &eventHandler.CacheHandler.SecretCache,
-		//	et.TypeURL(): et,
-		//}
+		var endpoints, routes, listeners, runtimes []types.Resource
 
-		// BEGIN STEVE
-		var clusters, endpoints, routes, listeners, runtimes []types.Resource
-
-		//eventHandler.CacheHandler.ClusterCache.Cnt
-		eventHandler.CacheHandler.Cnt = clusters
-
-		snapshotCache := cache.NewSnapshotCache(false, cache.IDHash{}, nil)
-		snapshot := cache.NewSnapshot("1.0", endpoints, clusters, routes, listeners, runtimes)
-		_ = snapshotCache.SetSnapshot("node1", snapshot)
-
-		server := xds.NewServer(context.Background(), snapshotCache, nil)
-		grpcServer := grpc.NewServer()
-
+		opts := ctx.grpcOptions()
+		s := cgrpc.NewAPI(log, eventHandler.CacheHandler.Cnt, endpoints, routes, listeners, runtimes, registry, opts...)
 		addr := net.JoinHostPort(ctx.xdsAddr, strconv.Itoa(ctx.xdsPort))
-		lis, _ := net.Listen("tcp", addr)
+		l, err := net.Listen("tcp", addr)
+		if err != nil {
+			return err
+		}
 
-		discovery.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
-		api.RegisterEndpointDiscoveryServiceServer(grpcServer, server)
-		api.RegisterClusterDiscoveryServiceServer(grpcServer, server)
-		api.RegisterRouteDiscoveryServiceServer(grpcServer, server)
-		api.RegisterListenerDiscoveryServiceServer(grpcServer, server)
-
-		// END STEVE
-
-		//opts := ctx.grpcOptions()
-		//s := cgrpc.NewAPI(log, resources, registry, opts...)
-		//addr := net.JoinHostPort(ctx.xdsAddr, strconv.Itoa(ctx.xdsPort))
-		//l, err := net.Listen("tcp", addr)
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//log = log.WithField("address", addr)
-		//if ctx.PermitInsecureGRPC {
-		//	log = log.WithField("insecure", true)
-		//}
+		log = log.WithField("address", addr)
+		if ctx.PermitInsecureGRPC {
+			log = log.WithField("insecure", true)
+		}
 
 		log.Info("started xDS server")
 		defer log.Info("stopped xDS server")
 
 		go func() {
 			<-stop
-			grpcServer.Stop()
+			s.Stop()
 		}()
 
-		return grpcServer.Serve(lis)
+		return s.Serve(l)
 	})
 
 	// step 14. Setup SIGTERM handler
