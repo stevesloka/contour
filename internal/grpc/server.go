@@ -19,7 +19,6 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	cache "github.com/envoyproxy/go-control-plane/pkg/cache/v2"
 	xds "github.com/envoyproxy/go-control-plane/pkg/server/v2"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -31,17 +30,12 @@ import (
 )
 
 // NewAPI returns a *grpc.Server which responds to the Envoy v2 xDS gRPC API.
-func NewAPI(log logrus.FieldLogger, clusters, endpoints, routes, listeners, runtimes []types.Resource,
-	registry *prometheus.Registry, opts ...grpc.ServerOption) *grpc.Server {
-
-	snapshotCache := cache.NewSnapshotCache(false, cache.IDHash{}, nil)
-	snapshot := cache.NewSnapshot("1.0", endpoints, clusters, routes, listeners, runtimes)
-	_ = snapshotCache.SetSnapshot("node1", snapshot)
+func NewAPI(log logrus.FieldLogger, snapshotCache cache.SnapshotCache, registry *prometheus.Registry, opts ...grpc.ServerOption) *grpc.Server {
 
 	server := xds.NewServer(context.TODO(), snapshotCache, nil)
 
 	s := &grpcServer{
-		server:  server,
+		//server:  server.Server,
 		metrics: grpc_prometheus.NewServerMetrics(),
 	}
 
@@ -49,11 +43,11 @@ func NewAPI(log logrus.FieldLogger, clusters, endpoints, routes, listeners, runt
 	opts = append(opts, grpc.StreamInterceptor(s.metrics.StreamServerInterceptor()),
 		grpc.UnaryInterceptor(s.metrics.UnaryServerInterceptor()))
 	g := grpc.NewServer(opts...)
-	v2.RegisterClusterDiscoveryServiceServer(g, s.server)
-	v2.RegisterEndpointDiscoveryServiceServer(g, s.server)
-	v2.RegisterListenerDiscoveryServiceServer(g, s.server)
-	v2.RegisterRouteDiscoveryServiceServer(g, s.server)
-	discovery.RegisterSecretDiscoveryServiceServer(g, s.server)
+	v2.RegisterClusterDiscoveryServiceServer(g, server)
+	v2.RegisterEndpointDiscoveryServiceServer(g, server)
+	v2.RegisterListenerDiscoveryServiceServer(g, server)
+	v2.RegisterRouteDiscoveryServiceServer(g, server)
+	discovery.RegisterSecretDiscoveryServiceServer(g, server)
 	s.metrics.InitializeMetrics(g)
 	return g
 }

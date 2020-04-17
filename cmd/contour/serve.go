@@ -25,6 +25,7 @@ import (
 	cgrpc "github.com/projectcontour/contour/internal/grpc"
 
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
+	cache "github.com/envoyproxy/go-control-plane/pkg/cache/v2"
 
 	"github.com/projectcontour/contour/internal/annotation"
 	"github.com/projectcontour/contour/internal/contour"
@@ -301,8 +302,15 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 
 		var endpoints, routes, listeners, runtimes []types.Resource
 
+		snapshotCache := cache.NewSnapshotCache(false, cache.IDHash{}, log)
+		snapshot := cache.NewSnapshot("1.0", endpoints, eventHandler.CacheHandler.Cnt, routes, listeners, runtimes)
+		err = snapshotCache.SetSnapshot("node1", snapshot)
+		if err != nil {
+			fmt.Println("----- err: ", err)
+		}
+
 		opts := ctx.grpcOptions()
-		s := cgrpc.NewAPI(log, eventHandler.CacheHandler.Cnt, endpoints, routes, listeners, runtimes, registry, opts...)
+		s := cgrpc.NewAPI(log, snapshotCache, registry, opts...)
 		addr := net.JoinHostPort(ctx.xdsAddr, strconv.Itoa(ctx.xdsPort))
 		l, err := net.Listen("tcp", addr)
 		if err != nil {
