@@ -256,11 +256,12 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		informerSyncList.InformOnResources(clusterInformerFactory, dynamicHandler, k8s.SecretsResources()...)
 	}
 
-	// step 5. endpoints updates are handled directly by the EndpointsTranslator
-	// due to their high update rate and their orthogonal nature.
-	et := &contour.EndpointsTranslator{
-		FieldLogger: log.WithField("context", "endpointstranslator"),
-	}
+	//// step 5. endpoints updates are handled directly by the EndpointsTranslator
+	//// due to their high update rate and their orthogonal nature.
+	//et := &contour.EndpointsTranslator{
+	//	ClusterCache: &eventHandler.CacheHandler.ClusterCache,
+	//	FieldLogger:  log.WithField("context", "endpointstranslator"),
+	//}
 
 	informerSyncList.InformOnResources(clusterInformerFactory,
 		&k8s.DynamicClientHandler{

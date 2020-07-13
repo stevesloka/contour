@@ -55,6 +55,19 @@ func (c *ClusterCache) Contents() []proto.Message {
 	return protobuf.AsMessages(values)
 }
 
+func (c *ClusterCache) Contains(name string) bool {
+	//c.mu.Lock()
+	//	//defer c.mu.Unlock()
+	//	//if c.values == nil {
+	//	//	fmt.Println("--- SKIPPING ENDPOINT UPDATE")
+	//	//	return false
+	//	//}
+	//	//if _, ok := c.values[name]; !ok {
+	//	//	return false
+	//	//}
+	return true
+}
+
 func (c *ClusterCache) Query(names []string) []proto.Message {
 	c.mu.Lock()
 	defer c.mu.Unlock()

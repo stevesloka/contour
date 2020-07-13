@@ -25,60 +25,60 @@ import (
 	"github.com/projectcontour/contour/internal/envoy"
 	"github.com/projectcontour/contour/internal/protobuf"
 	"github.com/projectcontour/contour/internal/sorter"
-	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8scache "k8s.io/client-go/tools/cache"
 )
 
-// A EndpointsTranslator translates Kubernetes Endpoints objects into Envoy
-// ClusterLoadAssignment objects.
-type EndpointsTranslator struct {
-	logrus.FieldLogger
-	clusterLoadAssignmentCache
-}
+//// A EndpointsTranslator translates Kubernetes Endpoints objects into Envoy
+//// ClusterLoadAssignment objects.
+//type EndpointsTranslator struct {
+//	logrus.FieldLogger
+//	ClusterLoadAssignmentCache
+//
+//}
 
-func (e *EndpointsTranslator) OnAdd(obj interface{}) {
+func (ch *CacheHandler) OnAdd(obj interface{}) {
 	switch obj := obj.(type) {
 	case *v1.Endpoints:
-		e.addEndpoints(obj)
+		ch.addEndpoints(obj)
 	default:
-		e.Errorf("OnAdd unexpected type %T: %#v", obj, obj)
+		ch.Errorf("OnAddEndpoint unexpected type %T: %#v", obj, obj)
 	}
 }
 
-func (e *EndpointsTranslator) OnUpdate(oldObj, newObj interface{}) {
+func (ch *CacheHandler) OnUpdateEndpoint(oldObj, newObj interface{}) {
 	switch newObj := newObj.(type) {
 	case *v1.Endpoints:
 		oldObj, ok := oldObj.(*v1.Endpoints)
 		if !ok {
-			e.Errorf("OnUpdate endpoints %#v received invalid oldObj %T; %#v", newObj, oldObj, oldObj)
+			ch.Errorf("OnUpdateEndpoints %#v received invalid oldObj %T; %#v", newObj, oldObj, oldObj)
 			return
 		}
-		e.updateEndpoints(oldObj, newObj)
+		ch.updateEndpoints(oldObj, newObj)
 	default:
 		e.Errorf("OnUpdate unexpected type %T: %#v", newObj, newObj)
 	}
 }
 
-func (e *EndpointsTranslator) OnDelete(obj interface{}) {
+func (ch *CacheHandler) OnDelete(obj interface{}) {
 	switch obj := obj.(type) {
 	case *v1.Endpoints:
-		e.removeEndpoints(obj)
+		ch.removeEndpoints(obj)
 	case k8scache.DeletedFinalStateUnknown:
-		e.OnDelete(obj.Obj) // recurse into ourselves with the tombstoned value
+		ch.OnDelete(obj.Obj) // recurse into ourselves with the tombstoned value
 	default:
-		e.Errorf("OnDelete unexpected type %T: %#v", obj, obj)
+		ch.Errorf("OnDelete unexpected type %T: %#v", obj, obj)
 	}
 }
 
-func (e *EndpointsTranslator) Contents() []proto.Message {
-	values := e.clusterLoadAssignmentCache.Contents()
+func (ch *CacheHandler) Contents() []proto.Message {
+	values := ch.ClusterLoadAssignmentCache.Contents()
 	sort.Stable(sorter.For(values))
 	return protobuf.AsMessages(values)
 }
 
-func (e *EndpointsTranslator) Query(names []string) []proto.Message {
+func (ch *CacheHandler) Query(names []string) []proto.Message {
 	e.clusterLoadAssignmentCache.mu.Lock()
 	defer e.clusterLoadAssignmentCache.mu.Unlock()
 	values := make([]*v2.ClusterLoadAssignment, 0, len(names))
@@ -96,28 +96,32 @@ func (e *EndpointsTranslator) Query(names []string) []proto.Message {
 	return protobuf.AsMessages(values)
 }
 
-func (*EndpointsTranslator) TypeURL() string { return resource.EndpointType }
+func (*CacheHandler) TypeURL() string { return resource.EndpointType }
 
-func (e *EndpointsTranslator) addEndpoints(ep *v1.Endpoints) {
-	e.recomputeClusterLoadAssignment(nil, ep)
-}
-
-func (e *EndpointsTranslator) updateEndpoints(oldep, newep *v1.Endpoints) {
-	if len(newep.Subsets) == 0 && len(oldep.Subsets) == 0 {
-		// if there are no endpoints in this object, and the old
-		// object also had zero endpoints, ignore this update
-		// to avoid sending a noop notification to watchers.
-		return
+func (ch *CacheHandler) addEndpoints(ep *v1.Endpoints) {
+	if ch.ClusterCache.Contains(ep.Name) {
+		ch.recomputeClusterLoadAssignment(nil, ep)
 	}
-	e.recomputeClusterLoadAssignment(oldep, newep)
 }
 
-func (e *EndpointsTranslator) removeEndpoints(ep *v1.Endpoints) {
-	e.recomputeClusterLoadAssignment(ep, nil)
+func (ch *CacheHandler) updateEndpoints(oldep, newep *v1.Endpoints) {
+	if ch.ClusterCache.Contains(newep.Name) {
+		if len(newep.Subsets) == 0 && len(oldep.Subsets) == 0 {
+			// if there are no endpoints in this object, and the old
+			// object also had zero endpoints, ignore this update
+			// to avoid sending a noop notification to watchers.
+			return
+		}
+		ch.recomputeClusterLoadAssignment(oldep, newep)
+	}
+}
+
+func (ch *CacheHandler) removeEndpoints(ep *v1.Endpoints) {
+	ch.recomputeClusterLoadAssignment(ep, nil)
 }
 
 // recomputeClusterLoadAssignment recomputes the EDS cache taking into account old and new endpoints.
-func (e *EndpointsTranslator) recomputeClusterLoadAssignment(oldep, newep *v1.Endpoints) {
+func (ch *CacheHandler) recomputeClusterLoadAssignment(oldep, newep *v1.Endpoints) {
 	// skip computation if either old and new services or endpoints are equal (thus also handling nil)
 	if oldep == newep {
 		return
@@ -164,7 +168,7 @@ func (e *EndpointsTranslator) recomputeClusterLoadAssignment(oldep, newep *v1.En
 				}},
 			}
 			seen[cla.ClusterName] = true
-			e.Add(cla)
+			ch.Add(cla)
 		}
 	}
 
@@ -184,7 +188,7 @@ func (e *EndpointsTranslator) recomputeClusterLoadAssignment(oldep, newep *v1.En
 
 }
 
-type clusterLoadAssignmentCache struct {
+type ClusterLoadAssignmentCache struct {
 	mu      sync.Mutex
 	entries map[string]*v2.ClusterLoadAssignment
 	Cond
@@ -192,7 +196,7 @@ type clusterLoadAssignmentCache struct {
 
 // Add adds an entry to the cache. If a ClusterLoadAssignment with the same
 // name exists, it is replaced.
-func (c *clusterLoadAssignmentCache) Add(a *v2.ClusterLoadAssignment) {
+func (c *ClusterLoadAssignmentCache) Add(a *v2.ClusterLoadAssignment) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.entries == nil {
@@ -204,7 +208,7 @@ func (c *clusterLoadAssignmentCache) Add(a *v2.ClusterLoadAssignment) {
 
 // Remove removes the named entry from the cache. If the entry
 // is not present in the cache, the operation is a no-op.
-func (c *clusterLoadAssignmentCache) Remove(name string) {
+func (c *ClusterLoadAssignmentCache) Remove(name string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	delete(c.entries, name)
@@ -212,7 +216,7 @@ func (c *clusterLoadAssignmentCache) Remove(name string) {
 }
 
 // Contents returns a copy of the contents of the cache.
-func (c *clusterLoadAssignmentCache) Contents() []*v2.ClusterLoadAssignment {
+func (c *ClusterLoadAssignmentCache) Contents() []*v2.ClusterLoadAssignment {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	values := make([]*v2.ClusterLoadAssignment, 0, len(c.entries))
@@ -221,6 +225,19 @@ func (c *clusterLoadAssignmentCache) Contents() []*v2.ClusterLoadAssignment {
 	}
 	return values
 }
+
+//// Contains returns `true` if the item exists in the cache
+//func (c *ClusterLoadAssignmentCache) Contains(name string) bool {
+//	c.mu.Lock()
+//	defer c.mu.Unlock()
+//	if c.entries == nil {
+//		return false
+//	}
+//	if _, ok := c.entries[name]; !ok {
+//		return false
+//	}
+//	return true
+//}
 
 // servicename returns the name of the cluster this meta and port
 // refers to. The CDS name of the cluster may include additional suffixes
