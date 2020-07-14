@@ -32,7 +32,6 @@ type CacheHandler struct {
 	RouteCache
 	ClusterCache
 	SecretCache
-	ClusterLoadAssignmentCache
 
 	*metrics.Metrics
 

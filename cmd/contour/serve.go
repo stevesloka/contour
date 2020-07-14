@@ -256,21 +256,23 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		informerSyncList.InformOnResources(clusterInformerFactory, dynamicHandler, k8s.SecretsResources()...)
 	}
 
-	//// step 5. endpoints updates are handled directly by the EndpointsTranslator
-	//// due to their high update rate and their orthogonal nature.
-	//et := &contour.EndpointsTranslator{
-	//	ClusterCache: &eventHandler.CacheHandler.ClusterCache,
-	//	FieldLogger:  log.WithField("context", "endpointstranslator"),
-	//}
+	// step 5. endpoints updates are handled directly by the EndpointsTranslator
+	// due to their high update rate and their orthogonal nature.
+	endpointsHandler := &contour.EndpointsHandler{
+		CacheHandler: eventHandler.CacheHandler,
+		FieldLogger:  log.WithField("context", "endpointshandler"),
+	}
+
+	eventHandler.EndpointsHandler = endpointsHandler
 
 	informerSyncList.InformOnResources(clusterInformerFactory,
 		&k8s.DynamicClientHandler{
 			Next: &contour.EventRecorder{
-				Next:    et,
+				Next:    endpointsHandler,
 				Counter: eventHandler.Metrics.EventHandlerOperations,
 			},
 			Converter: converter,
-			Logger:    log.WithField("context", "endpointstranslator"),
+			Logger:    log.WithField("context", "endpointshandler"),
 		}, k8s.EndpointsResources()...)
 
 	// step 6. setup workgroup runner and register informers.
@@ -393,7 +395,7 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 			eventHandler.CacheHandler.RouteCache.TypeURL():    &eventHandler.CacheHandler.RouteCache,
 			eventHandler.CacheHandler.ListenerCache.TypeURL(): &eventHandler.CacheHandler.ListenerCache,
 			eventHandler.CacheHandler.SecretCache.TypeURL():   &eventHandler.CacheHandler.SecretCache,
-			et.TypeURL(): et,
+			endpointsHandler.TypeURL():                        endpointsHandler,
 		}
 		opts := ctx.grpcOptions()
 		s := cgrpc.NewAPI(log, resources, registry, opts...)

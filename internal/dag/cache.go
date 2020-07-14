@@ -41,8 +41,8 @@ type KubernetesCache struct {
 
 	ingresses            map[k8s.FullName]*v1beta1.Ingress
 	httpproxies          map[k8s.FullName]*projectcontour.HTTPProxy
-	secrets              map[k8s.FullName]*v1.Secret
 	httpproxydelegations map[k8s.FullName]*projectcontour.TLSCertificateDelegation
+	secrets              map[k8s.FullName]*v1.Secret
 	services             map[k8s.FullName]*v1.Service
 	gatewayclasses       map[k8s.FullName]*serviceapis.GatewayClass
 	gateways             map[k8s.FullName]*serviceapis.Gateway

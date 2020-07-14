@@ -19,6 +19,8 @@ package contour
 import (
 	"time"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	projcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -35,6 +37,8 @@ type EventHandler struct {
 	dag.Builder
 
 	*CacheHandler
+
+	EndpointsHandler *EndpointsHandler
 
 	HoldoffDelay, HoldoffMaxDelay time.Duration
 
@@ -174,7 +178,14 @@ func (e *EventHandler) run(stop <-chan struct{}) error {
 func (e *EventHandler) onUpdate(op interface{}) bool {
 	switch op := op.(type) {
 	case opAdd:
-		return e.Builder.Source.Insert(op.obj)
+		result := e.Builder.Source.Insert(op.obj)
+		if result {
+			switch obj := op.obj.(type) {
+			case *v1.Service:
+				e.EndpointsHandler.RebuildCache(obj)
+			}
+		}
+		return result
 	case opUpdate:
 		if cmp.Equal(op.oldObj, op.newObj,
 			cmpopts.IgnoreFields(projcontour.HTTPProxy{}, "Status"),
@@ -184,6 +195,12 @@ func (e *EventHandler) onUpdate(op interface{}) bool {
 		}
 		remove := e.Builder.Source.Remove(op.oldObj)
 		insert := e.Builder.Source.Insert(op.newObj)
+
+		switch obj := op.newObj.(type) {
+		case *v1.Service:
+			e.EndpointsHandler.RebuildCache(obj)
+		}
+
 		return remove || insert
 	case opDelete:
 		return e.Builder.Source.Remove(op.obj)

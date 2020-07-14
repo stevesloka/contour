@@ -56,15 +56,14 @@ func (c *ClusterCache) Contents() []proto.Message {
 }
 
 func (c *ClusterCache) Contains(name string) bool {
-	//c.mu.Lock()
-	//	//defer c.mu.Unlock()
-	//	//if c.values == nil {
-	//	//	fmt.Println("--- SKIPPING ENDPOINT UPDATE")
-	//	//	return false
-	//	//}
-	//	//if _, ok := c.values[name]; !ok {
-	//	//	return false
-	//	//}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.values == nil {
+		return false
+	}
+	if _, ok := c.values[name]; !ok {
+		return false
+	}
 	return true
 }
 
