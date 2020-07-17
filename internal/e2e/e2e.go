@@ -24,7 +24,6 @@ import (
 	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v2"
 	resource "github.com/envoyproxy/go-control-plane/pkg/resource/v2"
-	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/projectcontour/contour/internal/assert"
 	"github.com/projectcontour/contour/internal/contour"
@@ -204,7 +203,7 @@ func check(t *testing.T, err error) {
 	}
 }
 
-func resources(t *testing.T, protos ...proto.Message) []*any.Any {
+func resources(t *testing.T, protos ...types.Resource) []*any.Any {
 	t.Helper()
 	var anys []*any.Any
 	for _, a := range protos {

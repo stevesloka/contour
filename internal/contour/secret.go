@@ -17,9 +17,10 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
+
 	envoy_api_v2_auth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
 	resource "github.com/envoyproxy/go-control-plane/pkg/resource/v2"
-	"github.com/golang/protobuf/proto"
 	"github.com/projectcontour/contour/internal/dag"
 	"github.com/projectcontour/contour/internal/envoy"
 	"github.com/projectcontour/contour/internal/protobuf"
@@ -43,7 +44,7 @@ func (c *SecretCache) Update(v map[string]*envoy_api_v2_auth.Secret) {
 }
 
 // Contents returns a copy of the cache's contents.
-func (c *SecretCache) Contents() []proto.Message {
+func (c *SecretCache) Contents() []types.Resource {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	var values []*envoy_api_v2_auth.Secret
@@ -54,7 +55,7 @@ func (c *SecretCache) Contents() []proto.Message {
 	return protobuf.AsMessages(values)
 }
 
-func (c *SecretCache) Query(names []string) []proto.Message {
+func (c *SecretCache) Query(names []string) []types.Resource {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	var values []*envoy_api_v2_auth.Secret

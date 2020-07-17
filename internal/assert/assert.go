@@ -17,8 +17,9 @@ package assert
 import (
 	"testing"
 
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
+
 	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
-	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/google/go-cmp/cmp"
@@ -54,7 +55,7 @@ func (a Assert) Equal(want, got interface{}) {
 	}
 }
 
-func unmarshalAny(a *any.Any) proto.Message {
+func unmarshalAny(a *any.Any) types.Resource {
 	if a == nil {
 		return nil
 	}

@@ -20,8 +20,8 @@ import (
 
 	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	envoy_api_v2_route "github.com/envoyproxy/go-control-plane/envoy/api/v2/route"
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	resource "github.com/envoyproxy/go-control-plane/pkg/resource/v2"
-	"github.com/golang/protobuf/proto"
 	"github.com/projectcontour/contour/internal/dag"
 	"github.com/projectcontour/contour/internal/envoy"
 	"github.com/projectcontour/contour/internal/protobuf"
@@ -45,7 +45,7 @@ func (c *RouteCache) Update(v map[string]*v2.RouteConfiguration) {
 }
 
 // Contents returns a copy of the cache's contents.
-func (c *RouteCache) Contents() []proto.Message {
+func (c *RouteCache) Contents() []types.Resource {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -59,7 +59,7 @@ func (c *RouteCache) Contents() []proto.Message {
 }
 
 // Query searches the RouteCache for the named RouteConfiguration entries.
-func (c *RouteCache) Query(names []string) []proto.Message {
+func (c *RouteCache) Query(names []string) []types.Resource {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

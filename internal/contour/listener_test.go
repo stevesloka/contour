@@ -24,7 +24,7 @@ import (
 	envoy_api_v2_auth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
 	envoy_api_v2_core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	envoy_api_v2_listener "github.com/envoyproxy/go-control-plane/envoy/api/v2/listener"
-	"github.com/golang/protobuf/proto"
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	projcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/projectcontour/contour/internal/assert"
 	"github.com/projectcontour/contour/internal/dag"
@@ -37,7 +37,7 @@ import (
 func TestListenerCacheContents(t *testing.T) {
 	tests := map[string]struct {
 		contents map[string]*v2.Listener
-		want     []proto.Message
+		want     []types.Resource
 	}{
 		"empty": {
 			contents: nil,
@@ -49,7 +49,7 @@ func TestListenerCacheContents(t *testing.T) {
 				Address:      envoy.SocketAddress("0.0.0.0", 8080),
 				FilterChains: envoy.FilterChains(envoy.HTTPConnectionManager(ENVOY_HTTP_LISTENER, envoy.FileAccessLogEnvoy(DEFAULT_HTTP_ACCESS_LOG), 0)),
 			}),
-			want: []proto.Message{
+			want: []types.Resource{
 				&v2.Listener{
 					Name:         ENVOY_HTTP_LISTENER,
 					Address:      envoy.SocketAddress("0.0.0.0", 8080),
@@ -73,7 +73,7 @@ func TestListenerCacheQuery(t *testing.T) {
 	tests := map[string]struct {
 		contents map[string]*v2.Listener
 		query    []string
-		want     []proto.Message
+		want     []types.Resource
 	}{
 		"exact match": {
 			contents: listenermap(&v2.Listener{
@@ -82,7 +82,7 @@ func TestListenerCacheQuery(t *testing.T) {
 				FilterChains: envoy.FilterChains(envoy.HTTPConnectionManager(ENVOY_HTTP_LISTENER, envoy.FileAccessLogEnvoy(DEFAULT_HTTP_ACCESS_LOG), 0)),
 			}),
 			query: []string{ENVOY_HTTP_LISTENER},
-			want: []proto.Message{
+			want: []types.Resource{
 				&v2.Listener{
 					Name:         ENVOY_HTTP_LISTENER,
 					Address:      envoy.SocketAddress("0.0.0.0", 8080),
@@ -97,7 +97,7 @@ func TestListenerCacheQuery(t *testing.T) {
 				FilterChains: envoy.FilterChains(envoy.HTTPConnectionManager(ENVOY_HTTP_LISTENER, envoy.FileAccessLogEnvoy(DEFAULT_HTTP_ACCESS_LOG), 0)),
 			}),
 			query: []string{ENVOY_HTTP_LISTENER, "stats-listener"},
-			want: []proto.Message{
+			want: []types.Resource{
 				&v2.Listener{
 					Name:         ENVOY_HTTP_LISTENER,
 					Address:      envoy.SocketAddress("0.0.0.0", 8080),

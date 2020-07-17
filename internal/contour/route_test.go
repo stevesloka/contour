@@ -20,7 +20,7 @@ import (
 	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	envoy_api_v2_core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	envoy_api_v2_route "github.com/envoyproxy/go-control-plane/envoy/api/v2/route"
-	"github.com/golang/protobuf/proto"
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	projcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/projectcontour/contour/internal/assert"
@@ -37,7 +37,7 @@ import (
 func TestRouteCacheContents(t *testing.T) {
 	tests := map[string]struct {
 		contents map[string]*v2.RouteConfiguration
-		want     []proto.Message
+		want     []types.Resource
 	}{
 		"empty": {
 			contents: nil,
@@ -52,7 +52,7 @@ func TestRouteCacheContents(t *testing.T) {
 					Name: "ingress_https",
 				},
 			},
-			want: []proto.Message{
+			want: []types.Resource{
 				&v2.RouteConfiguration{
 					Name: "ingress_http",
 				},
@@ -77,7 +77,7 @@ func TestRouteCacheQuery(t *testing.T) {
 	tests := map[string]struct {
 		contents map[string]*v2.RouteConfiguration
 		query    []string
-		want     []proto.Message
+		want     []types.Resource
 	}{
 		"exact match": {
 			contents: map[string]*v2.RouteConfiguration{
@@ -86,7 +86,7 @@ func TestRouteCacheQuery(t *testing.T) {
 				},
 			},
 			query: []string{"ingress_http"},
-			want: []proto.Message{
+			want: []types.Resource{
 				&v2.RouteConfiguration{
 					Name: "ingress_http",
 				},
@@ -99,7 +99,7 @@ func TestRouteCacheQuery(t *testing.T) {
 				},
 			},
 			query: []string{"stats-handler", "ingress_http"},
-			want: []proto.Message{
+			want: []types.Resource{
 				&v2.RouteConfiguration{
 					Name: "ingress_http",
 				},
@@ -115,7 +115,7 @@ func TestRouteCacheQuery(t *testing.T) {
 				},
 			},
 			query: []string{"stats-handler"},
-			want: []proto.Message{
+			want: []types.Resource{
 				&v2.RouteConfiguration{
 					Name: "stats-handler",
 				},

@@ -33,6 +33,8 @@ type CacheHandler struct {
 	ClusterCache
 	SecretCache
 
+	SnapshotHandler *SnapshotHandler
+
 	*metrics.Metrics
 
 	logrus.FieldLogger

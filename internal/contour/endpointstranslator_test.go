@@ -17,7 +17,7 @@ import (
 	"testing"
 
 	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
-	"github.com/golang/protobuf/proto"
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	"github.com/projectcontour/contour/internal/assert"
 	"github.com/projectcontour/contour/internal/envoy"
 	v1 "k8s.io/api/core/v1"
@@ -26,7 +26,7 @@ import (
 func TestEndpointsTranslatorContents(t *testing.T) {
 	tests := map[string]struct {
 		contents map[string]*v2.ClusterLoadAssignment
-		want     []proto.Message
+		want     []types.Resource
 	}{
 		"empty": {
 			contents: nil,
@@ -38,7 +38,7 @@ func TestEndpointsTranslatorContents(t *testing.T) {
 					envoy.SocketAddress("10.10.10.10", 80),
 				),
 			),
-			want: []proto.Message{
+			want: []types.Resource{
 				envoy.ClusterLoadAssignment("default/httpbin-org",
 					envoy.SocketAddress("10.10.10.10", 80),
 				),
@@ -60,7 +60,7 @@ func TestEndpointCacheQuery(t *testing.T) {
 	tests := map[string]struct {
 		contents map[string]*v2.ClusterLoadAssignment
 		query    []string
-		want     []proto.Message
+		want     []types.Resource
 	}{
 		"exact match": {
 			contents: clusterloadassignments(
@@ -69,7 +69,7 @@ func TestEndpointCacheQuery(t *testing.T) {
 				),
 			),
 			query: []string{"default/httpbin-org"},
-			want: []proto.Message{
+			want: []types.Resource{
 				envoy.ClusterLoadAssignment("default/httpbin-org",
 					envoy.SocketAddress("10.10.10.10", 80),
 				),
@@ -82,7 +82,7 @@ func TestEndpointCacheQuery(t *testing.T) {
 				),
 			),
 			query: []string{"default/kuard/8080", "default/httpbin-org"},
-			want: []proto.Message{
+			want: []types.Resource{
 				envoy.ClusterLoadAssignment("default/httpbin-org",
 					envoy.SocketAddress("10.10.10.10", 80),
 				),
@@ -96,7 +96,7 @@ func TestEndpointCacheQuery(t *testing.T) {
 				),
 			),
 			query: []string{"default/kuard/8080"},
-			want: []proto.Message{
+			want: []types.Resource{
 				envoy.ClusterLoadAssignment("default/kuard/8080"),
 			},
 		},
@@ -115,7 +115,7 @@ func TestEndpointCacheQuery(t *testing.T) {
 func TestEndpointsTranslatorAddEndpoints(t *testing.T) {
 	tests := map[string]struct {
 		ep   *v1.Endpoints
-		want []proto.Message
+		want []types.Resource
 	}{
 		"simple": {
 			ep: endpoints("default", "simple", v1.EndpointSubset{
@@ -124,7 +124,7 @@ func TestEndpointsTranslatorAddEndpoints(t *testing.T) {
 					port("", 8080),
 				),
 			}),
-			want: []proto.Message{
+			want: []types.Resource{
 				envoy.ClusterLoadAssignment("default/simple", envoy.SocketAddress("192.168.183.24", 8080)),
 			},
 		},
@@ -140,7 +140,7 @@ func TestEndpointsTranslatorAddEndpoints(t *testing.T) {
 					port("", 80),
 				),
 			}),
-			want: []proto.Message{
+			want: []types.Resource{
 				envoy.ClusterLoadAssignment("default/httpbin-org",
 					envoy.SocketAddress("23.23.247.89", 80), // addresses should be sorted
 					envoy.SocketAddress("50.17.192.147", 80),
@@ -159,7 +159,7 @@ func TestEndpointsTranslatorAddEndpoints(t *testing.T) {
 					port("a", 8675),
 				),
 			}),
-			want: []proto.Message{
+			want: []types.Resource{
 				envoy.ClusterLoadAssignment("default/httpbin-org/a", // cluster names should be sorted
 					envoy.SocketAddress("10.10.1.1", 8675),
 				),
@@ -179,7 +179,7 @@ func TestEndpointsTranslatorAddEndpoints(t *testing.T) {
 					port("a", 8675),
 				),
 			}),
-			want: []proto.Message{
+			want: []types.Resource{
 				envoy.ClusterLoadAssignment("default/httpbin-org/a",
 					envoy.SocketAddress("10.10.1.1", 8675), // addresses should be sorted
 					envoy.SocketAddress("10.10.2.2", 8675),
@@ -210,7 +210,7 @@ func TestEndpointsTranslatorAddEndpoints(t *testing.T) {
 					port("b", 309),
 				),
 			}),
-			want: []proto.Message{
+			want: []types.Resource{
 				envoy.ClusterLoadAssignment("default/httpbin-org/a",
 					envoy.SocketAddress("10.10.1.1", 8675),
 				),
@@ -239,7 +239,7 @@ func TestEndpointsTranslatorRemoveEndpoints(t *testing.T) {
 	tests := map[string]struct {
 		setup func(*EndpointsTranslator)
 		ep    *v1.Endpoints
-		want  []proto.Message
+		want  []types.Resource
 	}{
 		"remove existing": {
 			setup: func(et *EndpointsTranslator) {
@@ -273,7 +273,7 @@ func TestEndpointsTranslatorRemoveEndpoints(t *testing.T) {
 					port("", 8080),
 				),
 			}),
-			want: []proto.Message{
+			want: []types.Resource{
 				envoy.ClusterLoadAssignment("default/simple", envoy.SocketAddress("192.168.183.24", 8080)),
 			},
 		},
@@ -340,7 +340,7 @@ func TestEndpointsTranslatorRemoveEndpoints(t *testing.T) {
 func TestEndpointsTranslatorRecomputeClusterLoadAssignment(t *testing.T) {
 	tests := map[string]struct {
 		oldep, newep *v1.Endpoints
-		want         []proto.Message
+		want         []types.Resource
 	}{
 		"simple": {
 			newep: endpoints("default", "simple", v1.EndpointSubset{
@@ -349,7 +349,7 @@ func TestEndpointsTranslatorRecomputeClusterLoadAssignment(t *testing.T) {
 					port("", 8080),
 				),
 			}),
-			want: []proto.Message{
+			want: []types.Resource{
 				envoy.ClusterLoadAssignment("default/simple", envoy.SocketAddress("192.168.183.24", 8080)),
 			},
 		},
@@ -365,7 +365,7 @@ func TestEndpointsTranslatorRecomputeClusterLoadAssignment(t *testing.T) {
 					port("", 80),
 				),
 			}),
-			want: []proto.Message{
+			want: []types.Resource{
 				envoy.ClusterLoadAssignment("default/httpbin-org",
 					envoy.SocketAddress("23.23.247.89", 80),
 					envoy.SocketAddress("50.17.192.147", 80),
@@ -381,7 +381,7 @@ func TestEndpointsTranslatorRecomputeClusterLoadAssignment(t *testing.T) {
 					port("https", 8443),
 				),
 			}),
-			want: []proto.Message{
+			want: []types.Resource{
 				envoy.ClusterLoadAssignment("default/secure/https", envoy.SocketAddress("192.168.183.24", 8443)),
 			},
 		},
@@ -418,7 +418,7 @@ func TestEndpointsTranslatorScaleToZeroEndpoints(t *testing.T) {
 	et.OnAdd(e1)
 
 	// Assert endpoint was added
-	want := []proto.Message{
+	want := []types.Resource{
 		envoy.ClusterLoadAssignment("default/simple", envoy.SocketAddress("192.168.183.24", 8080)),
 	}
 	got := et.Contents()

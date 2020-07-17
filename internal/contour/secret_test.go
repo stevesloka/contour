@@ -18,7 +18,7 @@ import (
 
 	envoy_api_v2_auth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
 	envoy_api_v2_core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
-	"github.com/golang/protobuf/proto"
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	projcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/projectcontour/contour/internal/assert"
 	"github.com/projectcontour/contour/internal/dag"
@@ -32,7 +32,7 @@ import (
 func TestSecretCacheContents(t *testing.T) {
 	tests := map[string]struct {
 		contents map[string]*envoy_api_v2_auth.Secret
-		want     []proto.Message
+		want     []types.Resource
 	}{
 		"empty": {
 			contents: nil,
@@ -42,7 +42,7 @@ func TestSecretCacheContents(t *testing.T) {
 			contents: secretmap(
 				secret("default/secret/68621186db", secretdata(CERTIFICATE, RSA_PRIVATE_KEY)),
 			),
-			want: []proto.Message{
+			want: []types.Resource{
 				secret("default/secret/68621186db", secretdata(CERTIFICATE, RSA_PRIVATE_KEY)),
 			},
 		},
@@ -62,14 +62,14 @@ func TestSecretCacheQuery(t *testing.T) {
 	tests := map[string]struct {
 		contents map[string]*envoy_api_v2_auth.Secret
 		query    []string
-		want     []proto.Message
+		want     []types.Resource
 	}{
 		"exact match": {
 			contents: secretmap(
 				secret("default/secret/68621186db", secretdata(CERTIFICATE, RSA_PRIVATE_KEY)),
 			),
 			query: []string{"default/secret/68621186db"},
-			want: []proto.Message{
+			want: []types.Resource{
 				secret("default/secret/68621186db", secretdata(CERTIFICATE, RSA_PRIVATE_KEY)),
 			},
 		},
@@ -79,7 +79,7 @@ func TestSecretCacheQuery(t *testing.T) {
 				secret("default/secret-b/5397c67313", secretdata(CERTIFICATE_2, RSA_PRIVATE_KEY_2)),
 			),
 			query: []string{"default/secret/68621186db", "default/secret-b/5397c67313"},
-			want: []proto.Message{
+			want: []types.Resource{
 				secret("default/secret-b/5397c67313", secretdata(CERTIFICATE_2, RSA_PRIVATE_KEY_2)),
 			},
 		},

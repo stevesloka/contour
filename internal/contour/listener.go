@@ -23,8 +23,8 @@ import (
 	envoy_api_v2_auth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
 	envoy_api_v2_listener "github.com/envoyproxy/go-control-plane/envoy/api/v2/listener"
 	envoy_api_v2_accesslog "github.com/envoyproxy/go-control-plane/envoy/config/filter/accesslog/v2"
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	resource "github.com/envoyproxy/go-control-plane/pkg/resource/v2"
-	"github.com/golang/protobuf/proto"
 	"github.com/projectcontour/contour/internal/dag"
 	"github.com/projectcontour/contour/internal/envoy"
 	"github.com/projectcontour/contour/internal/protobuf"
@@ -300,7 +300,7 @@ func (c *ListenerCache) Update(v map[string]*v2.Listener) {
 }
 
 // Contents returns a copy of the cache's contents.
-func (c *ListenerCache) Contents() []proto.Message {
+func (c *ListenerCache) Contents() []types.Resource {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	var values []*v2.Listener
@@ -314,9 +314,9 @@ func (c *ListenerCache) Contents() []proto.Message {
 	return protobuf.AsMessages(values)
 }
 
-// Query returns the proto.Messages in the ListenerCache that match
+// Query returns the types.Resources in the ListenerCache that match
 // a slice of strings
-func (c *ListenerCache) Query(names []string) []proto.Message {
+func (c *ListenerCache) Query(names []string) []types.Resource {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	var values []*v2.Listener

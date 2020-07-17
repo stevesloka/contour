@@ -20,8 +20,8 @@ import (
 
 	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	envoy_api_v2_endpoint "github.com/envoyproxy/go-control-plane/envoy/api/v2/endpoint"
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	resource "github.com/envoyproxy/go-control-plane/pkg/resource/v2"
-	"github.com/golang/protobuf/proto"
 	"github.com/projectcontour/contour/internal/envoy"
 	"github.com/projectcontour/contour/internal/protobuf"
 	"github.com/projectcontour/contour/internal/sorter"
@@ -36,6 +36,8 @@ import (
 type EndpointsTranslator struct {
 	logrus.FieldLogger
 	clusterLoadAssignmentCache
+
+	SnapshotHandler *SnapshotHandler
 }
 
 func (e *EndpointsTranslator) OnAdd(obj interface{}) {
@@ -72,13 +74,13 @@ func (e *EndpointsTranslator) OnDelete(obj interface{}) {
 	}
 }
 
-func (e *EndpointsTranslator) Contents() []proto.Message {
+func (e *EndpointsTranslator) Contents() []types.Resource {
 	values := e.clusterLoadAssignmentCache.Contents()
 	sort.Stable(sorter.For(values))
 	return protobuf.AsMessages(values)
 }
 
-func (e *EndpointsTranslator) Query(names []string) []proto.Message {
+func (e *EndpointsTranslator) Query(names []string) []types.Resource {
 	e.clusterLoadAssignmentCache.mu.Lock()
 	defer e.clusterLoadAssignmentCache.mu.Unlock()
 	values := make([]*v2.ClusterLoadAssignment, 0, len(names))

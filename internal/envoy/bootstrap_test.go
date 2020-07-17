@@ -20,7 +20,6 @@ import (
 	api "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	envoy_api_bootstrap "github.com/envoyproxy/go-control-plane/envoy/config/bootstrap/v2"
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
 	"github.com/projectcontour/contour/internal/assert"
 )
 
@@ -995,7 +994,7 @@ func TestBootstrap(t *testing.T) {
 			steps, gotError := bootstrap(&tc.config)
 			assert.Equal(t, gotError != nil, tc.wantedError)
 
-			gotConfigs := map[string]proto.Message{}
+			gotConfigs := map[string]types.Resource{}
 			for _, step := range steps {
 				path, config := step(&tc.config)
 				gotConfigs[path] = config
@@ -1032,7 +1031,7 @@ func TestBootstrap(t *testing.T) {
 	}
 }
 
-func unmarshal(t *testing.T, data string, pb proto.Message) {
+func unmarshal(t *testing.T, data string, pb types.Resource) {
 	err := jsonpb.UnmarshalString(data, pb)
 	checkErr(t, err)
 }

@@ -22,10 +22,13 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc"
+
 	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v2"
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
+	v2cache "github.com/envoyproxy/go-control-plane/pkg/cache/v2"
 	resource "github.com/envoyproxy/go-control-plane/pkg/resource/v2"
-	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/any"
 	projcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/projectcontour/contour/internal/assert"
@@ -39,7 +42,6 @@ import (
 	"github.com/projectcontour/contour/internal/workgroup"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
-	"google.golang.org/grpc"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -65,7 +67,7 @@ func setup(t *testing.T, opts ...func(*contour.EventHandler)) (cache.ResourceEve
 }
 
 func setupWithFallbackCert(t *testing.T, fallbackCertName, fallbackCertNamespace string, opts ...func(*contour.EventHandler)) (cache.ResourceEventHandler, *Contour, func()) {
-	t.Parallel()
+	//t.Parallel()
 
 	log := logrus.New()
 	log.Out = new(discardWriter)
@@ -115,14 +117,10 @@ func setupWithFallbackCert(t *testing.T, fallbackCertName, fallbackCertNamespace
 	check(t, err)
 	discard := logrus.New()
 	discard.Out = new(discardWriter)
-	// Resource types in xDS v2.
-	srv := cgrpc.NewAPI(discard, map[string]cgrpc.Resource{
-		ch.ClusterCache.TypeURL():  &ch.ClusterCache,
-		ch.RouteCache.TypeURL():    &ch.RouteCache,
-		ch.ListenerCache.TypeURL(): &ch.ListenerCache,
-		ch.SecretCache.TypeURL():   &ch.SecretCache,
-		et.TypeURL():               et,
-	}, r)
+
+	// Setup snapshot cache
+	snapshotCache := v2cache.NewSnapshotCache(false, v2cache.IDHash{}, discard)
+	srv := cgrpc.NewAPI(prometheus.NewRegistry(), snapshotCache)
 
 	var g workgroup.Group
 
@@ -240,7 +238,7 @@ func routeResources(t *testing.T, routes ...*v2.RouteConfiguration) []*any.Any {
 	return resources(t, protobuf.AsMessages(routes)...)
 }
 
-func resources(t *testing.T, protos ...proto.Message) []*any.Any {
+func resources(t *testing.T, protos ...types.Resource) []*any.Any {
 	t.Helper()
 	anys := make([]*any.Any, 0, len(protos))
 	for _, pb := range protos {

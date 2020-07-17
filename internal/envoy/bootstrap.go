@@ -23,6 +23,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
+
 	api "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	envoy_api_v2_auth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
 	clusterv2 "github.com/envoyproxy/go-control-plane/envoy/api/v2/cluster"
@@ -30,7 +32,6 @@ import (
 	envoy_api_bootstrap "github.com/envoyproxy/go-control-plane/envoy/config/bootstrap/v2"
 	matcher "github.com/envoyproxy/go-control-plane/envoy/type/matcher"
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/projectcontour/contour/internal/protobuf"
 )
@@ -70,7 +71,7 @@ func WriteBootstrap(c *BootstrapConfig) error {
 	return nil
 }
 
-type bootstrapf func(*BootstrapConfig) (string, proto.Message)
+type bootstrapf func(*BootstrapConfig) (string, types.Resource)
 
 // bootstrap creates a new v2 bootstrap configuration and associated resource files.
 func bootstrap(c *BootstrapConfig) ([]bootstrapf, error) {
@@ -78,7 +79,7 @@ func bootstrap(c *BootstrapConfig) ([]bootstrapf, error) {
 
 	if c.GrpcClientCert == "" && c.GrpcClientKey == "" && c.GrpcCABundle == "" {
 		steps = append(steps,
-			func(*BootstrapConfig) (string, proto.Message) {
+			func(*BootstrapConfig) (string, types.Resource) {
 				return c.Path, bootstrapConfig(c)
 			})
 
@@ -117,7 +118,7 @@ func bootstrap(c *BootstrapConfig) ([]bootstrapf, error) {
 		// of xDS certificate files in this case.
 
 		steps = append(steps,
-			func(*BootstrapConfig) (string, proto.Message) {
+			func(*BootstrapConfig) (string, types.Resource) {
 				b := bootstrapConfig(c)
 				b.StaticResources.Clusters[0].TransportSocket = UpstreamTLSTransportSocket(
 					upstreamFileTLSContext(c))
@@ -139,13 +140,13 @@ func bootstrap(c *BootstrapConfig) ([]bootstrapf, error) {
 	sdsValidationContextPath := path.Join(c.ResourcesDir, sdsResourcesSubdirectory, sdsValidationContextFile)
 
 	steps = append(steps,
-		func(*BootstrapConfig) (string, proto.Message) {
+		func(*BootstrapConfig) (string, types.Resource) {
 			return sdsTLSCertificatePath, tlsCertificateSdsSecretConfig(c)
 		},
-		func(*BootstrapConfig) (string, proto.Message) {
+		func(*BootstrapConfig) (string, types.Resource) {
 			return sdsValidationContextPath, validationContextSdsSecretConfig(c)
 		},
-		func(*BootstrapConfig) (string, proto.Message) {
+		func(*BootstrapConfig) (string, types.Resource) {
 			b := bootstrapConfig(c)
 			b.StaticResources.Clusters[0].TransportSocket = UpstreamTLSTransportSocket(
 				upstreamSdsTLSContext(sdsTLSCertificatePath, sdsValidationContextPath))
@@ -398,7 +399,7 @@ func intOrDefault(i, def int) int {
 	return i
 }
 
-func writeConfig(filename string, config proto.Message) (err error) {
+func writeConfig(filename string, config types.Resource) (err error) {
 	var out *os.File
 
 	if filename == "-" {

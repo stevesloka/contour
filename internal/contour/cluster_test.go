@@ -20,6 +20,7 @@ import (
 	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	envoy_api_v2_cluster "github.com/envoyproxy/go-control-plane/envoy/api/v2/cluster"
 	envoy_api_v2_core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/duration"
 	projcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -35,7 +36,7 @@ import (
 func TestClusterCacheContents(t *testing.T) {
 	tests := map[string]struct {
 		contents map[string]*v2.Cluster
-		want     []proto.Message
+		want     []types.Resource
 	}{
 		"empty": {
 			contents: nil,
@@ -52,7 +53,7 @@ func TestClusterCacheContents(t *testing.T) {
 						ServiceName: "default/kuard",
 					},
 				}),
-			want: []proto.Message{
+			want: []types.Resource{
 				cluster(&v2.Cluster{
 					Name:                 "default/kuard/443/da39a3ee5e",
 					AltStatName:          "default_kuard_443",
@@ -80,7 +81,7 @@ func TestClusterCacheQuery(t *testing.T) {
 	tests := map[string]struct {
 		contents map[string]*v2.Cluster
 		query    []string
-		want     []proto.Message
+		want     []types.Resource
 	}{
 		"exact match": {
 			contents: clustermap(
@@ -94,7 +95,7 @@ func TestClusterCacheQuery(t *testing.T) {
 					},
 				}),
 			query: []string{"default/kuard/443/da39a3ee5e"},
-			want: []proto.Message{
+			want: []types.Resource{
 				cluster(&v2.Cluster{
 					Name:                 "default/kuard/443/da39a3ee5e",
 					AltStatName:          "default_kuard_443",
@@ -118,7 +119,7 @@ func TestClusterCacheQuery(t *testing.T) {
 					},
 				}),
 			query: []string{"default/kuard/443/da39a3ee5e", "foo/bar/baz"},
-			want: []proto.Message{
+			want: []types.Resource{
 				cluster(&v2.Cluster{
 					Name:                 "default/kuard/443/da39a3ee5e",
 					AltStatName:          "default_kuard_443",

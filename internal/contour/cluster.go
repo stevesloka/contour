@@ -17,10 +17,9 @@ import (
 	"sort"
 	"sync"
 
-	resource "github.com/envoyproxy/go-control-plane/pkg/resource/v2"
-
 	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
-	"github.com/golang/protobuf/proto"
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
+	resource "github.com/envoyproxy/go-control-plane/pkg/resource/v2"
 	"github.com/projectcontour/contour/internal/dag"
 	"github.com/projectcontour/contour/internal/envoy"
 	"github.com/projectcontour/contour/internal/protobuf"
@@ -44,7 +43,7 @@ func (c *ClusterCache) Update(v map[string]*v2.Cluster) {
 }
 
 // Contents returns a copy of the cache's contents.
-func (c *ClusterCache) Contents() []proto.Message {
+func (c *ClusterCache) Contents() []types.Resource {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	var values []*v2.Cluster
@@ -55,7 +54,7 @@ func (c *ClusterCache) Contents() []proto.Message {
 	return protobuf.AsMessages(values)
 }
 
-func (c *ClusterCache) Query(names []string) []proto.Message {
+func (c *ClusterCache) Query(names []string) []types.Resource {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	var values []*v2.Cluster
