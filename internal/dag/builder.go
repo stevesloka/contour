@@ -31,22 +31,37 @@ import (
 	"github.com/projectcontour/contour/internal/k8s"
 )
 
-// Builder builds a DAG.
-type Builder struct {
+// BuildProcessor defines a specific implementation
+// of a builder.
+type BuildProcessor interface {
+	Build(cache *KubernetesCache) BuilderData
+}
 
-	// Source is the source of Kubernetes objects
-	// from which to build a DAG.
-	Source KubernetesCache
-
-	// DisablePermitInsecure disables the use of the
-	// permitInsecure field in HTTPProxy.
-	DisablePermitInsecure bool
-
+type BuilderData struct {
 	services map[servicemeta]*Service
 	secrets  map[types.NamespacedName]*Secret
 
 	virtualhosts       map[string]*VirtualHost
 	securevirtualhosts map[string]*SecureVirtualHost
+}
+
+// Builder builds a DAG.
+type Builder struct {
+
+	// Processors defines the currently configured
+	// builder processors which are defined to process
+	// any ingress objects into Contour.
+	Processors []BuildProcessor
+
+	// Source is the source of Kubernetes objects
+	// from which to build a DAG.
+	Source KubernetesCache
+
+	BuilderData
+
+	// DisablePermitInsecure disables the use of the
+	// permitInsecure field in HTTPProxy.
+	DisablePermitInsecure bool
 
 	orphaned map[types.NamespacedName]bool
 
@@ -55,18 +70,23 @@ type Builder struct {
 	StatusWriter
 }
 
+func NewBuilder() *Builder {
+	contour := &Contour{}
+
+	return &Builder{
+		Processors: []BuildProcessor{
+			contour,
+		},
+	}
+}
+
 // Build builds a new DAG.
 func (b *Builder) Build() *DAG {
 	b.reset()
 
-	// setup secure vhosts if there is a matching secret
-	// we do this first so that the set of active secure vhosts is stable
-	// during computeIngresses.
-	b.computeSecureVirtualhosts()
-
-	b.computeIngresses()
-
-	b.computeHTTPProxies()
+	for _, p := range b.Processors {
+		p.Build(&b.Source)
+	}
 
 	return b.buildDAG()
 }
@@ -155,20 +175,6 @@ func (b *Builder) lookupVirtualHost(name string) *VirtualHost {
 		return vh
 	}
 	return vh
-}
-
-func (b *Builder) lookupSecureVirtualHost(name string) *SecureVirtualHost {
-	svh, ok := b.securevirtualhosts[name]
-	if !ok {
-		svh := &SecureVirtualHost{
-			VirtualHost: VirtualHost{
-				Name: name,
-			},
-		}
-		b.securevirtualhosts[svh.VirtualHost.Name] = svh
-		return svh
-	}
-	return svh
 }
 
 // validHTTPProxies returns a slice of *projcontour.HTTPProxy objects.
