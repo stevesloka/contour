@@ -425,3 +425,36 @@ func (kc *KubernetesCache) LookupSecret(name types.NamespacedName, validate func
 
 	return s, nil
 }
+
+func (kc *KubernetesCache) DelegationPermitted(secret types.NamespacedName, to string) bool {
+	contains := func(haystack []string, needle string) bool {
+		if len(haystack) == 1 && haystack[0] == "*" {
+			return true
+		}
+		for _, h := range haystack {
+			if h == needle {
+				return true
+			}
+		}
+		return false
+	}
+
+	if secret.Namespace == to {
+		// secret is in the same namespace as target
+		return true
+	}
+
+	for _, d := range kc.httpproxydelegations {
+		if d.Namespace != secret.Namespace {
+			continue
+		}
+		for _, d := range d.Spec.Delegations {
+			if contains(d.TargetNamespaces, to) {
+				if secret.Name == d.SecretName {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
