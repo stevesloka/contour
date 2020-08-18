@@ -20,15 +20,14 @@ import (
 	"strconv"
 	"strings"
 
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/api/networking/v1beta1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
-
 	"github.com/google/go-cmp/cmp"
 	projcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/projectcontour/contour/internal/annotation"
 	"github.com/projectcontour/contour/internal/k8s"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/networking/v1beta1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // BuildProcessor defines a specific implementation
@@ -43,6 +42,20 @@ type BuilderData struct {
 
 	virtualhosts       map[string]*VirtualHost
 	securevirtualhosts map[string]*SecureVirtualHost
+}
+
+func (bd *BuilderData) lookupSecureVirtualHost(name string) *SecureVirtualHost {
+	svh, ok := bd.securevirtualhosts[name]
+	if !ok {
+		svh := &SecureVirtualHost{
+			VirtualHost: VirtualHost{
+				Name: name,
+			},
+		}
+		bd.securevirtualhosts[svh.VirtualHost.Name] = svh
+		return svh
+	}
+	return svh
 }
 
 // Builder builds a DAG.
@@ -88,7 +101,7 @@ func (b *Builder) Build() *DAG {
 		p.Build(&b.Source)
 	}
 
-	c.computeHTTPProxies()
+	b.computeHTTPProxies()
 
 	return b.buildDAG()
 }
@@ -103,42 +116,6 @@ func (b *Builder) reset() {
 	b.securevirtualhosts = make(map[string]*SecureVirtualHost)
 
 	b.statuses = make(map[types.NamespacedName]Status, len(b.statuses))
-}
-
-// lookupService returns a Service that matches the Meta and Port of the Kubernetes' Service,
-// or an error if the service or port can't be located.
-func (b *Builder) lookupService(m types.NamespacedName, port intstr.IntOrString) (*Service, error) {
-	lookup := func() *Service {
-		if port.Type != intstr.Int {
-			// can't handle, give up
-			return nil
-		}
-		sm := servicemeta{
-			name:      m.Name,
-			namespace: m.Namespace,
-			port:      int32(port.IntValue()),
-		}
-		return b.services[sm]
-	}
-
-	s := lookup()
-	if s != nil {
-		return s, nil
-	}
-	svc, ok := b.Source.services[m]
-	if !ok {
-		return nil, fmt.Errorf("service %q not found", m)
-	}
-	for i := range svc.Spec.Ports {
-		p := svc.Spec.Ports[i]
-		switch {
-		case int(p.Port) == port.IntValue():
-			return b.addService(svc, p), nil
-		case port.String() == p.Name:
-			return b.addService(svc, p), nil
-		}
-	}
-	return nil, fmt.Errorf("port %q on service %q not matched", port.String(), m)
 }
 
 func (b *Builder) addService(svc *v1.Service, port v1.ServicePort) *Service {
@@ -214,91 +191,6 @@ func (b *Builder) validHTTPProxies() []*projcontour.HTTPProxy {
 		}
 	}
 	return valid
-}
-
-// computeSecureVirtualhosts populates tls parameters of
-// secure virtual hosts.
-func (b *Builder) computeSecureVirtualhosts() {
-	for _, ing := range b.Source.ingresses {
-		for _, tls := range ing.Spec.TLS {
-			secretName := k8s.NamespacedNameFrom(tls.SecretName, k8s.DefaultNamespace(ing.GetNamespace()))
-			sec, err := b.Source.LookupSecret(secretName, validSecret)
-			if err != nil {
-				b.Source.WithField("name", ing.GetName()).
-					WithField("namespace", ing.GetNamespace()).
-					WithField("error", err.Error()).
-					Errorf("invalid TLS secret %q", secretName)
-				continue
-			}
-			b.secrets[k8s.NamespacedNameOf(sec.Object)] = sec
-
-			if !b.Source.DelegationPermitted(secretName, ing.GetNamespace()) {
-				b.Source.WithField("name", ing.GetName()).
-					WithField("namespace", ing.GetNamespace()).
-					WithField("error", err).
-					Errorf("certificate delegation not permitted for Secret %q", secretName)
-				continue
-			}
-
-			// We have validated the TLS secrets, so we can go
-			// ahead and create the SecureVirtualHost for this
-			// Ingress.
-			for _, host := range tls.Hosts {
-				svhost := b.lookupSecureVirtualHost(host)
-				svhost.Secret = sec
-				svhost.MinTLSVersion = annotation.MinTLSVersion(
-					annotation.CompatAnnotation(ing, "tls-minimum-protocol-version"))
-			}
-		}
-	}
-}
-
-func (b *Builder) computeIngresses() {
-	// deconstruct each ingress into routes and virtualhost entries
-	for _, ing := range b.Source.ingresses {
-
-		// rewrite the default ingress to a stock ingress rule.
-		rules := rulesFromSpec(ing.Spec)
-		for _, rule := range rules {
-			b.computeIngressRule(ing, rule)
-		}
-	}
-}
-
-func (b *Builder) computeIngressRule(ing *v1beta1.Ingress, rule v1beta1.IngressRule) {
-	host := rule.Host
-	if strings.Contains(host, "*") {
-		// reject hosts with wildcard characters.
-		return
-	}
-	if host == "" {
-		// if host name is blank, rewrite to Envoy's * default host.
-		host = "*"
-	}
-	for _, httppath := range httppaths(rule) {
-		path := stringOrDefault(httppath.Path, "/")
-		be := httppath.Backend
-		m := types.NamespacedName{Name: be.ServiceName, Namespace: ing.Namespace}
-		s, err := b.lookupService(m, be.ServicePort)
-		if err != nil {
-			continue
-		}
-
-		r := route(ing, path, s)
-
-		// should we create port 80 routes for this ingress
-		if annotation.TLSRequired(ing) || annotation.HTTPAllowed(ing) {
-			b.lookupVirtualHost(host).addRoute(r)
-		}
-
-		// computeSecureVirtualhosts will have populated b.securevirtualhosts
-		// with the names of tls enabled ingress objects. If host exists then
-		// it is correctly configured for TLS.
-		svh, ok := b.securevirtualhosts[host]
-		if ok && host != "*" {
-			svh.addRoute(r)
-		}
-	}
 }
 
 func (b *Builder) computeHTTPProxies() {
