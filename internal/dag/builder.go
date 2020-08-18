@@ -88,6 +88,8 @@ func (b *Builder) Build() *DAG {
 		p.Build(&b.Source)
 	}
 
+	c.computeHTTPProxies()
+
 	return b.buildDAG()
 }
 

@@ -37,8 +37,6 @@ func (c *Contour) Build(cache *KubernetesCache) BuilderData {
 
 	c.computeIngresses()
 
-	c.computeHTTPProxies()
-
 	return BuilderData{}
 }
 
@@ -48,7 +46,7 @@ func (c *Contour) computeSecureVirtualhosts() {
 	for _, ing := range c.cache.ingresses {
 		for _, tls := range ing.Spec.TLS {
 			secretName := k8s.NamespacedNameFrom(tls.SecretName, k8s.DefaultNamespace(ing.GetNamespace()))
-			sec, err := c.lookupSecret(secretName, validSecret)
+			sec, err := c.cache.LookupSecret(secretName, validSecret)
 			if err != nil {
 				c.cache.WithField("name", ing.GetName()).
 					WithField("namespace", ing.GetNamespace()).
