@@ -131,6 +131,8 @@ func registerServe(app *kingpin.Application) (*kingpin.CmdClause, *serveContext)
 
 // doServe runs the contour serve subcommand.
 func doServe(log logrus.FieldLogger, ctx *serveContext) error {
+	fmt.Println("---- xdsType: ", ctx.XDSServerType)
+
 	// Establish k8s core & dynamic client connections.
 	clients, err := k8s.NewClients(ctx.Kubeconfig, ctx.InCluster)
 	if err != nil {
@@ -417,36 +419,44 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		}
 		log.Printf("informer caches synced")
 
-		rpcServer := xds.RegisterServer(
-			xds.NewContourServer(log, contour.ResourcesOf(resources)...),
-			registry,
-			ctx.grpcOptions()...)
+		switch ctx.XDSServerType {
+		case "contour":
+			rpcServer := xds.RegisterServer(
+				xds.NewContourServer(log, contour.ResourcesOf(resources)...),
+				registry,
+				ctx.grpcOptions()...)
 
-		addr := net.JoinHostPort(ctx.xdsAddr, strconv.Itoa(ctx.xdsPort))
-		l, err := net.Listen("tcp", addr)
-		if err != nil {
-			return err
+			addr := net.JoinHostPort(ctx.xdsAddr, strconv.Itoa(ctx.xdsPort))
+			l, err := net.Listen("tcp", addr)
+			if err != nil {
+				return err
+			}
+
+			log = log.WithField("address", addr)
+			if ctx.PermitInsecureGRPC {
+				log = log.WithField("insecure", true)
+			}
+
+			log.Info("started xDS server")
+			defer log.Info("stopped xDS server")
+
+			go func() {
+				<-stop
+
+				// We don't use GracefulStop here because envoy
+				// has long-lived hanging xDS requests. There's no
+				// mechanism to make those pending requests fail,
+				// so we forcibly terminate the TCP sessions.
+				rpcServer.Stop()
+			}()
+
+			return rpcServer.Serve(l)
+		case "gocontrolplane":
+			fmt.Println("--- using gocontrolplane!")
+		default:
+			log.Fatalf("invalid xdsServerType %q configured", ctx.XDSServerType)
 		}
-
-		log = log.WithField("address", addr)
-		if ctx.PermitInsecureGRPC {
-			log = log.WithField("insecure", true)
-		}
-
-		log.Info("started xDS server")
-		defer log.Info("stopped xDS server")
-
-		go func() {
-			<-stop
-
-			// We don't use GracefulStop here because envoy
-			// has long-lived hanging xDS requests. There's no
-			// mechanism to make those pending requests fail,
-			// so we forcibly terminate the TCP sessions.
-			rpcServer.Stop()
-		}()
-
-		return rpcServer.Serve(l)
+		return nil
 	})
 
 	// Set up SIGTERM handler for graceful shutdown.
