@@ -32,6 +32,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type BuildProcessor interface {
+	Build(dag *DAG) *DAG
+}
+
 // Builder builds a DAG.
 type Builder struct {
 
@@ -61,10 +65,16 @@ type Builder struct {
 func (b *Builder) Build() *DAG {
 	b.reset()
 
-	// setup secure vhosts if there is a matching secret
-	// we do this first so that the set of active secure vhosts is stable
-	// during computeIngresses.
-	b.computeSecureVirtualhosts()
+	var dag *DAG
+
+	ingressProcessor := NewIngress(&b.Source)
+	//proxyProcessor := &httpproxy.HTTPProxy{}
+	processors := []BuildProcessor{ingressProcessor}
+	for _, p := range processors {
+		dag := p.Build(dag)
+
+		fmt.Println("-dag: ", dag)
+	}
 
 	b.computeIngresses()
 
@@ -208,45 +218,6 @@ func (b *Builder) validHTTPProxies() []*projcontour.HTTPProxy {
 		}
 	}
 	return valid
-}
-
-// computeSecureVirtualhosts populates tls parameters of
-// secure virtual hosts.
-func (b *Builder) computeSecureVirtualhosts() {
-	for _, ing := range b.Source.ingresses {
-		for _, tls := range ing.Spec.TLS {
-			secretName := k8s.NamespacedNameFrom(tls.SecretName, k8s.DefaultNamespace(ing.GetNamespace()))
-			sec, err := b.Source.LookupSecret(secretName, validSecret)
-			if err != nil {
-				b.WithError(err).
-					WithField("name", ing.GetName()).
-					WithField("namespace", ing.GetNamespace()).
-					WithField("secret", secretName).
-					Error("unresolved secret reference")
-				continue
-			}
-			b.secrets[k8s.NamespacedNameOf(sec.Object)] = sec
-
-			if !b.Source.DelegationPermitted(secretName, ing.GetNamespace()) {
-				b.WithError(err).
-					WithField("name", ing.GetName()).
-					WithField("namespace", ing.GetNamespace()).
-					WithField("secret", secretName).
-					Error("certificate delegation not permitted")
-				continue
-			}
-
-			// We have validated the TLS secrets, so we can go
-			// ahead and create the SecureVirtualHost for this
-			// Ingress.
-			for _, host := range tls.Hosts {
-				svhost := b.lookupSecureVirtualHost(host)
-				svhost.Secret = sec
-				svhost.MinTLSVersion = annotation.MinTLSVersion(
-					annotation.CompatAnnotation(ing, "tls-minimum-protocol-version"))
-			}
-		}
-	}
 }
 
 func (b *Builder) computeIngresses() {
