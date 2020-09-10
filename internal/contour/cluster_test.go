@@ -68,7 +68,11 @@ func TestClusterCacheContents(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			var cc ClusterCache
-			cc.Update(tc.contents)
+			new := map[string]interface{}{}
+			for k, v := range tc.contents {
+				new[k] = v
+			}
+			cc.Update(new)
 			got := cc.Contents()
 			protobuf.ExpectEqual(t, tc.want, got)
 		})
@@ -148,7 +152,11 @@ func TestClusterCacheQuery(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			var cc ClusterCache
-			cc.Update(tc.contents)
+			new := map[string]interface{}{}
+			for k, v := range tc.contents {
+				new[k] = v
+			}
+			cc.Update(new)
 			got := cc.Query(tc.query)
 			protobuf.ExpectEqual(t, tc.want, got)
 		})

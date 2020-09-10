@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
+	v3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	resource "github.com/envoyproxy/go-control-plane/pkg/resource/v2"
 	"github.com/golang/protobuf/proto"
 	"github.com/projectcontour/contour/internal/dag"
@@ -28,25 +29,28 @@ import (
 
 // ClusterCache manages the contents of the gRPC CDS cache.
 type ClusterCache struct {
-	mu     sync.Mutex
-	values map[string]*v2.Cluster
+	mu       sync.Mutex
+	values   map[string]interface{}
+	valuesv3 map[string]*v3.Cluster
 	Cond
 }
 
 // Update replaces the contents of the cache with the supplied map.
-func (c *ClusterCache) Update(v map[string]*v2.Cluster) {
+func (c *ClusterCache) Update(clusters map[string]interface{}) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-
-	c.values = v
+	c.values = clusters
 	c.Cond.Notify()
 }
 
 // Contents returns a copy of the cache's contents.
 func (c *ClusterCache) Contents() []proto.Message {
+	if c.values == nil {
+		return nil
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	var values []*v2.Cluster
+	values := make([]interface{}, len(c.values))
 	for _, v := range c.values {
 		values = append(values, v)
 	}
@@ -57,7 +61,7 @@ func (c *ClusterCache) Contents() []proto.Message {
 func (c *ClusterCache) Query(names []string) []proto.Message {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	var values []*v2.Cluster
+	var values []interface{}
 	for _, n := range names {
 		// if the cluster is not registered we cannot return
 		// a blank cluster because each cluster has a required
@@ -76,7 +80,14 @@ func (*ClusterCache) TypeURL() string { return resource.ClusterType }
 
 func (c *ClusterCache) OnChange(root *dag.DAG) {
 	clusters := visitClusters(root)
-	c.Update(clusters)
+
+	// convert to map[string]interface{}
+	new := map[string]interface{}{}
+	for k, v := range clusters {
+		new[k] = v
+	}
+
+	c.Update(new)
 }
 
 type clusterVisitor struct {

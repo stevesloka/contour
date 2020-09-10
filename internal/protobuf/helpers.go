@@ -72,10 +72,6 @@ func Bool(val bool) *wrappers.BoolValue {
 // returns nil.
 func AsMessages(messages interface{}) []proto.Message {
 	v := reflect.ValueOf(messages)
-	if v.Len() == 0 {
-		return nil
-	}
-
 	protos := make([]proto.Message, v.Len())
 
 	for i := range protos {
