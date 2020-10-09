@@ -18,7 +18,7 @@ import (
 	"time"
 
 	envoy_v3_cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
-	envoy_api_v3_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	envoy_v3_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoy_v3_endpoint "github.com/envoyproxy/go-control-plane/envoy/service/endpoint/v3"
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type"
 	"github.com/projectcontour/contour/internal/dag"
@@ -84,7 +84,7 @@ func Cluster(c *dag.Cluster) *envoy_v3_cluster.Cluster {
 			),
 		)
 	case "h2":
-		cluster.Http2ProtocolOptions = &envoy_api_v3_core.Http2ProtocolOptions{}
+		cluster.Http2ProtocolOptions = &envoy_v3_core.Http2ProtocolOptions{}
 		cluster.TransportSocket = UpstreamTLSTransportSocket(
 			UpstreamTLSContext(
 				c.UpstreamValidation,
@@ -94,7 +94,7 @@ func Cluster(c *dag.Cluster) *envoy_v3_cluster.Cluster {
 			),
 		)
 	case "h2c":
-		cluster.Http2ProtocolOptions = &envoy_api_v3_core.Http2ProtocolOptions{}
+		cluster.Http2ProtocolOptions = &envoy_v3_core.Http2ProtocolOptions{}
 	}
 
 	return cluster
@@ -129,7 +129,7 @@ func ExtensionCluster(ext *dag.ExtensionCluster) *envoy_v3_cluster.Cluster {
 
 	switch ext.Protocol {
 	case "h2":
-		cluster.Http2ProtocolOptions = &envoy_api_v3_core.Http2ProtocolOptions{}
+		cluster.Http2ProtocolOptions = &envoy_v3_core.Http2ProtocolOptions{}
 		cluster.TransportSocket = UpstreamTLSTransportSocket(
 			UpstreamTLSContext(
 				ext.UpstreamValidation,
@@ -139,7 +139,7 @@ func ExtensionCluster(ext *dag.ExtensionCluster) *envoy_v3_cluster.Cluster {
 			),
 		)
 	case "h2c":
-		cluster.Http2ProtocolOptions = &envoy_api_v3_core.Http2ProtocolOptions{}
+		cluster.Http2ProtocolOptions = &envoy_v3_core.Http2ProtocolOptions{}
 	}
 
 	return cluster
@@ -180,18 +180,18 @@ func lbPolicy(strategy string) envoy_v3_cluster.Cluster_LbPolicy {
 	}
 }
 
-func edshealthcheck(c *dag.Cluster) []*envoy_api_v3_core.HealthCheck {
+func edshealthcheck(c *dag.Cluster) []*envoy_v3_core.HealthCheck {
 	if c.HTTPHealthCheckPolicy == nil && c.TCPHealthCheckPolicy == nil {
 		return nil
 	}
 
 	if c.HTTPHealthCheckPolicy != nil {
-		return []*envoy_api_v3_core.HealthCheck{
+		return []*envoy_v3_core.HealthCheck{
 			httpHealthCheck(c),
 		}
 	}
 
-	return []*envoy_api_v3_core.HealthCheck{
+	return []*envoy_v3_core.HealthCheck{
 		tcpHealthCheck(c),
 	}
 }
@@ -205,15 +205,15 @@ func ClusterCommonLBConfig() *envoy_v3_cluster.Cluster_CommonLbConfig {
 	}
 }
 
-// ConfigSource returns a *envoy_api_v3_core.ConfigSource for cluster.
-func ConfigSource(cluster string) *envoy_api_v3_core.ConfigSource {
-	return &envoy_api_v3_core.ConfigSource{
-		ConfigSourceSpecifier: &envoy_api_v3_core.ConfigSource_ApiConfigSource{
-			ApiConfigSource: &envoy_api_v3_core.ApiConfigSource{
-				ApiType: envoy_api_v3_core.ApiConfigSource_GRPC,
-				GrpcServices: []*envoy_api_v3_core.GrpcService{{
-					TargetSpecifier: &envoy_api_v3_core.GrpcService_EnvoyGrpc_{
-						EnvoyGrpc: &envoy_api_v3_core.GrpcService_EnvoyGrpc{
+// ConfigSource returns a *envoy_v3_core.ConfigSource for cluster.
+func ConfigSource(cluster string) *envoy_v3_core.ConfigSource {
+	return &envoy_v3_core.ConfigSource{
+		ConfigSourceSpecifier: &envoy_v3_core.ConfigSource_ApiConfigSource{
+			ApiConfigSource: &envoy_v3_core.ApiConfigSource{
+				ApiType: envoy_v3_core.ApiConfigSource_GRPC,
+				GrpcServices: []*envoy_v3_core.GrpcService{{
+					TargetSpecifier: &envoy_v3_core.GrpcService_EnvoyGrpc_{
+						EnvoyGrpc: &envoy_v3_core.GrpcService_EnvoyGrpc{
 							ClusterName: cluster,
 						},
 					},
