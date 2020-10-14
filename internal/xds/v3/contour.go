@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"sync/atomic"
 
 	envoy_service_cluster_v3 "github.com/envoyproxy/go-control-plane/envoy/service/cluster/v3"
 	envoy_service_discovery_v3 "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
@@ -37,15 +36,6 @@ type grpcStream interface {
 	Send(*envoy_service_discovery_v3.DiscoveryResponse) error
 	Recv() (*envoy_service_discovery_v3.DiscoveryRequest, error)
 }
-
-// counter holds an atomically incrementing counter.
-type counter uint64
-
-func (c *counter) next() uint64 {
-	return atomic.AddUint64((*uint64)(c), 1)
-}
-
-var connections counter
 
 // NewContourServer creates an internally implemented Server that streams the
 // provided set of Resource objects. The returned Server implements the xDS
@@ -75,13 +65,14 @@ type contourServer struct {
 	envoy_service_listener_v3.UnimplementedListenerDiscoveryServiceServer
 
 	logrus.FieldLogger
-	resources map[string]xds.Resource
+	resources   map[string]xds.Resource
+	connections xds.Counter
 }
 
 // stream processes a stream of DiscoveryRequests.
 func (s *contourServer) stream(st grpcStream) error {
 	// Bump connection counter and set it as a field on the logger.
-	log := s.WithField("connection", connections.next())
+	log := s.WithField("connection", s.connections.Next())
 
 	// Notify whether the stream terminated on error.
 	done := func(log *logrus.Entry, err error) error {

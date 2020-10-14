@@ -13,7 +13,13 @@
 
 package xds
 
-import "github.com/golang/protobuf/proto"
+import (
+	"fmt"
+	"sync/atomic"
+
+	"github.com/golang/protobuf/proto"
+	"google.golang.org/grpc/status"
+)
 
 // Resource represents a source of proto.Messages that can be registered
 // for interest.
@@ -29,4 +35,37 @@ type Resource interface {
 
 	// TypeURL returns the typeURL of messages returned from Values.
 	TypeURL() string
+}
+
+// counter holds an atomically incrementing counter.
+type Counter uint64
+
+func (c *Counter) Next() uint64 {
+	return atomic.AddUint64((*uint64)(c), 1)
+}
+
+type EnvoyMessage struct {
+	TypeUrl       string
+	ErrorDetail   *status.Status
+	ResponseNonce string
+	VersionInfo   string
+	ResourceNames []string
+}
+
+type Notifier struct {
+	Event chan EnvoyMessage
+}
+
+func (xds *Notifier) Start() func(stop <-chan struct{}) error {
+	return func(stop <-chan struct{}) error {
+		for {
+			select {
+			case <-stop:
+				fmt.Println("stopping!")
+				return nil
+			case e := <-xds.Event:
+				fmt.Println("--- got an event! ", e)
+			}
+		}
+	}
 }

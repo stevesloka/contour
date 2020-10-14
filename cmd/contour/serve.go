@@ -611,6 +611,11 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		lbsw.lbStatus <- parseStatusFlag(ctx.IngressStatusAddress)
 	}
 
+	notifier := xds.Notifier{
+		Event: make(chan xds.EnvoyMessage),
+	}
+	g.Add(notifier.Start())
+
 	g.Add(func(stop <-chan struct{}) error {
 		log := log.WithField("context", "xds")
 
@@ -625,7 +630,7 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		switch ctx.XDSServerType {
 		case "contour":
 			grpcServer = contour_xds_v2.RegisterServer(
-				contour_xds_v2.NewContourServer(log, xdscache.ResourcesOf(resources)...),
+				contour_xds_v2.NewContourServer(log, notifier, xdscache.ResourcesOf(resources)...),
 				registry,
 				ctx.grpcOptions(log)...)
 		case "envoy":
