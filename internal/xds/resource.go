@@ -14,10 +14,17 @@
 package xds
 
 import (
+	"context"
 	"fmt"
+	envoy_api_v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
+	"strconv"
 	"sync/atomic"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/any"
 	"google.golang.org/grpc/status"
 )
 
@@ -54,17 +61,125 @@ type EnvoyMessage struct {
 
 type Notifier struct {
 	Event chan EnvoyMessage
+	logrus.FieldLogger
+	connections Counter
+	Context     context.Context
+	resources map[string]Resource
 }
 
-func (xds *Notifier) Start() func(stop <-chan struct{}) error {
+func NewNotifier(e chan EnvoyMessage, log logrus.FieldLogger, resources ...Resource) Notifier {
+	n := Notifier{
+		Event:       e,
+		FieldLogger: log,
+		Context:     nil,
+	}
+
+	for i, r := range resources {
+		n.resources[r.TypeURL()] = resources[i]
+	}
+	return n
+}
+
+func (n *Notifier) Start() func(stop <-chan struct{}) error {
 	return func(stop <-chan struct{}) error {
+
+		// Notify whether the stream terminated on error.
+		done := func(log *logrus.Entry, err error) error {
+			if err != nil {
+				log.WithError(err).Error("stream terminated")
+			} else {
+				log.Info("stream terminated")
+			}
+
+			return err
+		}
+
+		// Bump connection counter and set it as a field on the logger.
+		log := n.WithField("connection", n.connections.Next())
+
+		ch := make(chan int, 1)
+
+		// internally all registration values start at zero so sending
+		// a last that is less than zero will guarantee that each stream
+		// will generate a response immediately, then wait.
+		last := -1
+		ctx := n.Context
+
 		for {
 			select {
 			case <-stop:
 				fmt.Println("stopping!")
 				return nil
-			case e := <-xds.Event:
-				fmt.Println("--- got an event! ", e)
+			case req := <-n.Event:
+				fmt.Println("--- got an event! ", req)
+
+					// note: redeclare log in this scope so the next time around the loop all is forgotten.
+					//log := log.WithField("version_info", req.VersionInfo).WithField("response_nonce", req.ResponseNonce)
+					//if req.Node != nil {
+					//	log = log.WithField("node_id", req.Node.Id).WithField("node_version", fmt.Sprintf("v%d.%d.%d", req.Node.GetUserAgentBuildVersion().Version.MajorNumber, req.Node.GetUserAgentBuildVersion().Version.MinorNumber, req.Node.GetUserAgentBuildVersion().Version.Patch))
+					//}
+
+					if status := req.ErrorDetail; status != nil {
+						// if Envoy rejected the last update log the details here.
+						// TODO(dfc) issue 1176: handle xDS ACK/NACK
+						log.WithField("code", status.Code).Error(status.Message)
+					}
+
+					// from the request we derive the resource to stream which have
+					// been registered according to the typeURL.
+					r, ok := n.resources[req.TypeUrl]
+					if !ok {
+						return done(log, fmt.Errorf("no resource registered for typeURL %q", req.TypeUrl))
+					}
+
+					log = log.WithField("resource_names", req.ResourceNames).WithField("type_url", req.TypeUrl)
+					log.Info("stream_wait")
+
+					// now we wait for a notification, if this is the first request received on this
+					// connection last will be less than zero and that will trigger a response immediately.
+					r.Register(ch, last, req.ResourceNames...)
+					select {
+					case last = <-ch:
+						// boom, something in the cache has changed.
+						// TODO(dfc) the thing that has changed may not be in the scope of the filter
+						// so we're going to be sending an update that is a no-op. See #426
+
+						var resources []proto.Message
+						switch len(req.ResourceNames) {
+						case 0:
+							// no resource hints supplied, return the full
+							// contents of the resource
+							resources = r.Contents()
+						default:
+							// resource hints supplied, return exactly those
+							resources = r.Query(req.ResourceNames)
+						}
+
+						any := make([]*any.Any, 0, len(resources))
+						for _, r := range resources {
+							a, err := ptypes.MarshalAny(r)
+							if err != nil {
+								return done(log, err)
+							}
+
+							any = append(any, a)
+						}
+
+						//resp := &envoy_api_v2.DiscoveryResponse{
+						//	VersionInfo: strconv.Itoa(last),
+						//	Resources:   any,
+						//	TypeUrl:     r.TypeURL(),
+						//	Nonce:       strconv.Itoa(last),
+						//}
+
+						//if err := st.Send(resp); err != nil {
+						//	return done(log, err)
+						//}
+
+					case <-ctx.Done():
+						return done(log, ctx.Err())
+					}
+				}
 			}
 		}
 	}

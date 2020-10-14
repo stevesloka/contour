@@ -611,9 +611,7 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		lbsw.lbStatus <- parseStatusFlag(ctx.IngressStatusAddress)
 	}
 
-	notifier := xds.Notifier{
-		Event: make(chan xds.EnvoyMessage),
-	}
+	notifier := xds.NewNotifier(make(chan xds.EnvoyMessage), log.WithField("context", "xdsNotifier"), xdscache.ResourcesOf(resources)...)
 	g.Add(notifier.Start())
 
 	g.Add(func(stop <-chan struct{}) error {
