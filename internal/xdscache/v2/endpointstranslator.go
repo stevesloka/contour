@@ -30,6 +30,7 @@ import (
 	"github.com/projectcontour/contour/internal/sorter"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 )
@@ -298,11 +299,19 @@ func (e *EndpointsTranslator) OnChange(d *dag.DAG) {
 	// set the entries rather than merging them.
 	entries := e.cache.Recalculate()
 
+	// Check if any endpoints have changed
+	if !equality.Semantic.DeepEqual(entries, e.entries) {
+		fmt.Println("--- endpoints changed, sending notification")
+		fmt.Println("---- current: ", e.entries)
+		fmt.Println("----     new: ", entries)
+		e.Notify()
+	} else {
+		fmt.Println("--- endpoints are the same, skipping update")
+	}
+
 	e.mu.Lock()
 	e.entries = entries
 	e.mu.Unlock()
-
-	e.Notify()
 }
 
 func (e *EndpointsTranslator) OnAdd(obj interface{}) {
