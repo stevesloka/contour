@@ -351,7 +351,8 @@ func (b *httpConnectionManagerBuilder) Get() *envoy_listener_v3.Filter {
 		HttpProtocolOptions: &envoy_core_v3.Http1ProtocolOptions{
 			// Enable support for HTTP/1.0 requests that carry
 			// a Host: header. See #537.
-			AcceptHttp_10: true,
+			AcceptHttp_10:      true,
+			AllowChunkedLength: true,
 		},
 		UseRemoteAddress: protobuf.Bool(true),
 		NormalizePath:    protobuf.Bool(true),
