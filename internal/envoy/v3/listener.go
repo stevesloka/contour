@@ -22,13 +22,16 @@ import (
 	"time"
 
 	accesslog "github.com/envoyproxy/go-control-plane/envoy/config/accesslog/v3"
+	envoy_config_cluster_v3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	envoy_core_v3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoy_listener_v3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
+	envoy_extensions_common_dynamic_forward_proxy_v3 "github.com/envoyproxy/go-control-plane/envoy/extensions/common/dynamic_forward_proxy/v3"
 	envoy_compressor_v3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/compressor/v3"
 	envoy_config_filter_http_ext_authz_v3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/ext_authz/v3"
 	lua "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/lua/v3"
 	envoy_extensions_filters_http_router_v3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/router/v3"
 	http "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
+	envoy_extensions_filters_network_sni_dynamic_forward_proxy_v3alpha "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/sni_dynamic_forward_proxy/v3alpha"
 	tcp "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/tcp_proxy/v3"
 	envoy_tls_v3 "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3"
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
@@ -410,7 +413,9 @@ func HTTPConnectionManagerBuilder() *httpConnectionManagerBuilder {
 }
 
 // TCPProxy creates a new TCPProxy filter.
-func TCPProxy(statPrefix string, proxy *dag.TCPProxy, accesslogger []*accesslog.AccessLog) *envoy_listener_v3.Filter {
+func TCPProxy(statPrefix string, proxy *dag.TCPProxy, accesslogger []*accesslog.AccessLog) []*envoy_listener_v3.Filter {
+	var filter *envoy_listener_v3.Filter
+
 	// Set the idle timeout in seconds for connections through a TCP Proxy type filter.
 	// The value of two and a half hours for reasons documented at
 	// https://github.com/projectcontour/contour/issues/1074
@@ -419,7 +424,7 @@ func TCPProxy(statPrefix string, proxy *dag.TCPProxy, accesslogger []*accesslog.
 
 	switch len(proxy.Clusters) {
 	case 1:
-		return &envoy_listener_v3.Filter{
+		filter = &envoy_listener_v3.Filter{
 			Name: wellknown.TCPProxy,
 			ConfigType: &envoy_listener_v3.Filter_TypedConfig{
 				TypedConfig: protobuf.MustMarshalAny(&tcp.TcpProxy{
@@ -445,7 +450,7 @@ func TCPProxy(statPrefix string, proxy *dag.TCPProxy, accesslogger []*accesslog.
 			})
 		}
 		sort.Stable(sorter.For(clusters))
-		return &envoy_listener_v3.Filter{
+		filter = &envoy_listener_v3.Filter{
 			Name: wellknown.TCPProxy,
 			ConfigType: &envoy_listener_v3.Filter_TypedConfig{
 				TypedConfig: protobuf.MustMarshalAny(&tcp.TcpProxy{
@@ -460,6 +465,25 @@ func TCPProxy(statPrefix string, proxy *dag.TCPProxy, accesslogger []*accesslog.
 				}),
 			},
 		}
+	}
+
+	// NOTE: The TCP Filter must be last in the filter chain.
+	return []*envoy_listener_v3.Filter{
+		{
+			Name: "dynamic_forward_proxy_cache_config",
+			ConfigType: &envoy_listener_v3.Filter_TypedConfig{
+				TypedConfig: protobuf.MustMarshalAny(&envoy_extensions_filters_network_sni_dynamic_forward_proxy_v3alpha.FilterConfig{
+					DnsCacheConfig: &envoy_extensions_common_dynamic_forward_proxy_v3.DnsCacheConfig{
+						Name:            "dynamic_forward_proxy_cache_config",
+						DnsLookupFamily: envoy_config_cluster_v3.Cluster_V4_ONLY,
+					},
+					PortSpecifier: &envoy_extensions_filters_network_sni_dynamic_forward_proxy_v3alpha.FilterConfig_PortValue{
+						PortValue: 443,
+					},
+				}),
+			},
+		},
+		filter,
 	}
 }
 

@@ -14,12 +14,16 @@
 package v3
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
 	envoy_cluster_v3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
+	envoy_config_cluster_v3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	envoy_core_v3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoy_endpoint_v3 "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
+	envoy_dynamic "github.com/envoyproxy/go-control-plane/envoy/extensions/clusters/dynamic_forward_proxy/v3"
+	envoy_extensions_common_dynamic_forward_proxy_v3 "github.com/envoyproxy/go-control-plane/envoy/extensions/common/dynamic_forward_proxy/v3"
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/projectcontour/contour/internal/dag"
 	"github.com/projectcontour/contour/internal/envoy"
@@ -53,8 +57,21 @@ func Cluster(c *dag.Cluster) *envoy_cluster_v3.Cluster {
 		cluster.ClusterDiscoveryType = ClusterDiscoveryType(envoy_cluster_v3.Cluster_EDS)
 		cluster.EdsClusterConfig = edsconfig("contour", service)
 	default:
+		fmt.Println("---setting to external name!")
+
 		// external name set, use hard coded DNS name
-		cluster.ClusterDiscoveryType = ClusterDiscoveryType(envoy_cluster_v3.Cluster_STRICT_DNS)
+		cluster.ClusterDiscoveryType = &envoy_cluster_v3.Cluster_ClusterType{
+			ClusterType: &envoy_cluster_v3.Cluster_CustomClusterType{
+				Name: "dynamic_forward_cluster",
+				TypedConfig: protobuf.MustMarshalAny(&envoy_dynamic.ClusterConfig{
+					DnsCacheConfig: &envoy_extensions_common_dynamic_forward_proxy_v3.DnsCacheConfig{
+						Name:            "dynamic_forward_proxy_cache_config",
+						DnsLookupFamily: envoy_config_cluster_v3.Cluster_V4_ONLY,
+					},
+				}),
+			},
+		}
+		// cluster.ClusterDiscoveryType = ClusterDiscoveryType(envoy_cluster_v3.Cluster_STRICT_DNS)
 		cluster.LoadAssignment = StaticClusterLoadAssignment(service)
 	}
 

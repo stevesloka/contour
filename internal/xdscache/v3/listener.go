@@ -421,7 +421,7 @@ func (v *listenerVisitor) visit(vertex dag.Vertex) {
 			filters = envoy_v3.Filters(
 				envoy_v3.TCPProxy(ENVOY_HTTPS_LISTENER,
 					vh.TCPProxy,
-					v.ListenerConfig.newSecureAccessLog()),
+					v.ListenerConfig.newSecureAccessLog())...,
 			)
 
 			// Do not offer ALPN for TCP proxying, since
