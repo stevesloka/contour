@@ -412,6 +412,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 						},
 					},
 					&GatewayAPIProcessor{
+						Gateway:     gateway,
 						FieldLogger: fixture.NewTestLogger(t),
 					},
 					&ListenerProcessor{},

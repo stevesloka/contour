@@ -14,6 +14,7 @@
 package dag
 
 import (
+	"github.com/projectcontour/contour/internal/k8s"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -24,6 +25,8 @@ import (
 // objects and adds them to the DAG.
 type GatewayAPIProcessor struct {
 	logrus.FieldLogger
+
+	Gateway *gatewayapi_v1alpha1.Gateway
 
 	dag    *DAG
 	source *KubernetesCache
@@ -41,8 +44,39 @@ func (p *GatewayAPIProcessor) Run(dag *DAG, source *KubernetesCache) {
 		p.source = nil
 	}()
 
-	for _, route := range p.source.httproutes {
-		p.computeHTTPRoute(route)
+	for nsName, route := range p.source.httproutes {
+
+		var validRoutes []*gatewayapi_v1alpha1.HTTPRoute
+
+		// Filter the HTTPRoutes that match the gateway which Contour is configured to watch.
+		// RouteBindingSelector defines a schema for associating routes with the Gateway.
+		// If Namespaces and Selector are defined, only routes matching both selectors are associated with the Gateway.
+
+		// ## RouteBindingSelector ##
+		//
+		// Namespaces indicates in which namespaces Routes should be selected for this Gateway.
+		// This is restricted to the namespace of this Gateway by default.
+		for _, listener := range p.Gateway.Spec.Listeners {
+			switch listener.Routes.Namespaces.From {
+			case "All":
+				// Routes in all namespaces may be used by this Gateway.
+				validRoutes = append(validRoutes, route)
+			case "Selector":
+				// Routes in namespaces selected by the selector may be used by this Gateway.
+
+			case "Same":
+				// Only Routes in the same namespace may be used by this Gateway (Default).
+				if nsName == k8s.NamespacedNameOf(route) {
+					validRoutes = append(validRoutes, route)
+				}
+			}
+
+		}
+
+		// Process all the routes that match this Gateway.
+		for _, validRoute := range validRoutes {
+			p.computeHTTPRoute(validRoute)
+		}
 	}
 }
 
