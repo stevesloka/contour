@@ -63,8 +63,17 @@ func (p *GatewayAPIProcessor) Run(dag *DAG, source *KubernetesCache) {
 				validRoutes = append(validRoutes, route)
 			case "Selector":
 				// Routes in namespaces selected by the selector may be used by this Gateway.
-
+				for _, namespace := range p.source.namespaces {
+					for k, v := range namespace.Labels {
+						if matchesSelector(k, v, listener.Routes.Selector.MatchLabels) {
+							validRoutes = append(validRoutes, route)
+							break
+						}
+					}
+				}
 			case "Same":
+				fallthrough
+			default:
 				// Only Routes in the same namespace may be used by this Gateway (Default).
 				if nsName == k8s.NamespacedNameOf(route) {
 					validRoutes = append(validRoutes, route)
@@ -78,6 +87,16 @@ func (p *GatewayAPIProcessor) Run(dag *DAG, source *KubernetesCache) {
 			p.computeHTTPRoute(validRoute)
 		}
 	}
+}
+
+func matchesSelector(namespaceKey, namespaceValue string, matchLabels map[string]string) bool {
+
+	for matchKey, matchValue := range matchLabels {
+		if namespaceKey == matchKey && namespaceValue == matchValue {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *GatewayAPIProcessor) computeHTTPRoute(route *gatewayapi_v1alpha1.HTTPRoute) {
