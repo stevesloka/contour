@@ -187,11 +187,9 @@ func retryPolicy(r *dag.Route) *envoy_route_v3.RetryPolicy {
 	rp := &envoy_route_v3.RetryPolicy{
 		RetryOn:              r.RetryPolicy.RetryOn,
 		RetriableStatusCodes: r.RetryPolicy.RetriableStatusCodes,
+		NumRetries:           protobuf.UInt32(r.RetryPolicy.NumRetries),
+		PerTryTimeout:        envoy.Timeout(r.RetryPolicy.PerTryTimeout),
 	}
-	if r.RetryPolicy.NumRetries > 0 {
-		rp.NumRetries = protobuf.UInt32(r.RetryPolicy.NumRetries)
-	}
-	rp.PerTryTimeout = envoy.Timeout(r.RetryPolicy.PerTryTimeout)
 
 	return rp
 }

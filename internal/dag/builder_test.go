@@ -2208,7 +2208,7 @@ func TestDAGInsert(t *testing.T) {
 					Prefix: "/",
 				}},
 				RetryPolicy: &contour_api_v1.RetryPolicy{
-					NumRetries:    6,
+					NumRetries:    pointer.Int64Ptr(6),
 					PerTryTimeout: "10s",
 				},
 				Services: []contour_api_v1.Service{{
@@ -2233,7 +2233,7 @@ func TestDAGInsert(t *testing.T) {
 					Prefix: "/",
 				}},
 				RetryPolicy: &contour_api_v1.RetryPolicy{
-					NumRetries:    6,
+					NumRetries:    pointer.Int64Ptr(6),
 					PerTryTimeout: "please",
 				},
 				Services: []contour_api_v1.Service{{
@@ -2258,7 +2258,7 @@ func TestDAGInsert(t *testing.T) {
 					Prefix: "/",
 				}},
 				RetryPolicy: &contour_api_v1.RetryPolicy{
-					NumRetries:    0,
+					NumRetries:    pointer.Int64Ptr(0),
 					PerTryTimeout: "10s",
 				},
 				Services: []contour_api_v1.Service{{
@@ -5756,7 +5756,7 @@ func TestDAGInsert(t *testing.T) {
 							Clusters:           clustermap(s1),
 							RetryPolicy: &RetryPolicy{
 								RetryOn:       "5xx",
-								NumRetries:    1,
+								NumRetries:    0,
 								PerTryTimeout: timeout.DurationSetting(10 * time.Second),
 							},
 						}),

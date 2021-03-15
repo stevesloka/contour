@@ -595,7 +595,7 @@ type RetryPolicy struct {
 	// If not supplied, the number of retries is one.
 	// +optional
 	// +kubebuilder:validation:Minimum=0
-	NumRetries int64 `json:"count"`
+	NumRetries *int64 `json:"count"`
 	// PerTryTimeout specifies the timeout per retry attempt.
 	// Ignored if NumRetries is not supplied.
 	// +optional

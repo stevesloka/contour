@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/utils/pointer"
+
 	envoy_route_v3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	envoy_discovery_v3 "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	contour_api_v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -136,7 +138,7 @@ func TestRetryPolicy(t *testing.T) {
 			VirtualHost: &contour_api_v1.VirtualHost{Fqdn: "test3.test.com"},
 			Routes: []contour_api_v1.Route{{
 				RetryPolicy: &contour_api_v1.RetryPolicy{
-					NumRetries:    5,
+					NumRetries:    pointer.Int64Ptr(5),
 					PerTryTimeout: "105s",
 				},
 				Services: []contour_api_v1.Service{{

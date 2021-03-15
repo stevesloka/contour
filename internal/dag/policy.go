@@ -82,12 +82,21 @@ func retryPolicy(rp *contour_api_v1.RetryPolicy) *RetryPolicy {
 		perTryTimeout = timeout.DurationSetting(perTryDuration)
 	}
 
+	fmt.Println("----numretries: ", rp.NumRetries)
+
 	return &RetryPolicy{
 		RetryOn:              retryOn(rp.RetryOn),
 		RetriableStatusCodes: rp.RetriableStatusCodes,
-		NumRetries:           max(1, uint32(rp.NumRetries)),
+		NumRetries:           numRetries(rp.NumRetries, 1),
 		PerTryTimeout:        perTryTimeout,
 	}
+}
+
+func numRetries(i *int64, def uint32) uint32 {
+	if i == nil {
+		return def
+	}
+	return uint32(*i)
 }
 
 func headersPolicyService(defaultPolicy *HeadersPolicy, policy *contour_api_v1.HeadersPolicy, dynamicHeaders map[string]string) (*HeadersPolicy, error) {

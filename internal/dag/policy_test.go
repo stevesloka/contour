@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/utils/pointer"
+
 	contour_api_v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/projectcontour/contour/internal/timeout"
 	"github.com/sirupsen/logrus"
@@ -133,11 +135,11 @@ func TestRetryPolicy(t *testing.T) {
 		},
 		"explicitly zero retries": {
 			rp: &contour_api_v1.RetryPolicy{
-				NumRetries: 0, // zero value for NumRetries
+				NumRetries: pointer.Int64Ptr(0), // zero value for NumRetries
 			},
 			want: &RetryPolicy{
 				RetryOn:    "5xx",
-				NumRetries: 1,
+				NumRetries: 0,
 			},
 		},
 		"no retry count, per try timeout": {
