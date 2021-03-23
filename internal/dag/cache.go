@@ -38,6 +38,7 @@ import (
 // A KubernetesCache holds Kubernetes objects and associated configuration and produces
 // DAG values.
 type KubernetesCache struct {
+
 	// RootNamespaces specifies the namespaces where root
 	// HTTPProxies can be defined. If empty, roots can be defined in any
 	// namespace.

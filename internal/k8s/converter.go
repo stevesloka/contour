@@ -37,34 +37,14 @@ type DynamicClientHandler struct {
 }
 
 func (d *DynamicClientHandler) OnAdd(obj interface{}) {
-	obj, err := d.Converter.FromUnstructured(obj)
-	if err != nil {
-		d.Logger.Error(err)
-		return
-	}
 	d.Next.OnAdd(obj)
 }
 
 func (d *DynamicClientHandler) OnUpdate(oldObj, newObj interface{}) {
-	oldObj, err := d.Converter.FromUnstructured(oldObj)
-	if err != nil {
-		d.Logger.Error(err)
-		return
-	}
-	newObj, err = d.Converter.FromUnstructured(newObj)
-	if err != nil {
-		d.Logger.Error(err)
-		return
-	}
 	d.Next.OnUpdate(oldObj, newObj)
 }
 
 func (d *DynamicClientHandler) OnDelete(obj interface{}) {
-	obj, err := d.Converter.FromUnstructured(obj)
-	if err != nil {
-		d.Logger.Error(err)
-		return
-	}
 	d.Next.OnDelete(obj)
 }
 
