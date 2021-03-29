@@ -30,9 +30,9 @@ import (
 )
 
 const (
-	prometheusURL      = "http://localhost:9001/stats/prometheus"
-	healthcheckFailURL = "http://localhost:9001/healthcheck/fail"
-	prometheusStat     = "envoy_http_downstream_cx_active"
+	prometheusURLFormat      = "http://localhost:%d/stats/prometheus"
+	healthcheckFailURLFormat = "http://localhost:%d/healthcheck/fail"
+	prometheusStat           = "envoy_http_downstream_cx_active"
 )
 
 // shutdownReadyFile is the default file path used in the /shutdown endpoint.
@@ -70,6 +70,9 @@ type shutdownContext struct {
 	// that can be open when polling for active connections in Envoy
 	minOpenConnections int
 
+	// adminPort defines the port for our envoy pod, being configurable through --admin-port flag
+	adminPort int
+
 	logrus.FieldLogger
 }
 
@@ -82,13 +85,17 @@ func newShutdownManagerContext() *shutdownmanagerContext {
 	}
 }
 
-func newShutdownContext() *shutdownContext {
+func newShutdownContext(defaultAdminPort int) *shutdownContext {
 	// Set defaults for parameters which are then overridden via flags, ENV, or ConfigFile
+	if defaultAdminPort == 0 {
+		defaultAdminPort = 9001 // default port
+	}
 	return &shutdownContext{
 		checkInterval:      5 * time.Second,
 		checkDelay:         60 * time.Second,
 		drainDelay:         0,
 		minOpenConnections: 0,
+		adminPort:          defaultAdminPort,
 	}
 }
 
@@ -142,7 +149,7 @@ func (s *shutdownContext) shutdownHandler() {
 	// Send shutdown signal to Envoy to start draining connections
 	s.Infof("failing envoy healthchecks")
 
-	// Retry any failures to shutdownEnvoy() in a Backoff time window
+	// Retry any failures to shutdownEnvoy(s.adminPort) in a Backoff time window
 	// doing 4 total attempts, multiplying the Duration by the Factor
 	// for each iteration.
 	err := retry.OnError(wait.Backoff{
@@ -155,7 +162,7 @@ func (s *shutdownContext) shutdownHandler() {
 		return true
 	}, func() error {
 		s.Infof("attempting to shutdown")
-		return shutdownEnvoy()
+		return shutdownEnvoy(s.adminPort)
 	})
 	if err != nil {
 		// May be conflict if max retries were hit, or may be something unrelated
@@ -167,7 +174,7 @@ func (s *shutdownContext) shutdownHandler() {
 	time.Sleep(s.checkDelay)
 
 	for {
-		openConnections, err := getOpenConnections()
+		openConnections, err := getOpenConnections(s.adminPort)
 		if err != nil {
 			s.Error(err)
 		} else {
@@ -193,7 +200,9 @@ func (s *shutdownContext) shutdownHandler() {
 }
 
 // shutdownEnvoy sends a POST request to /healthcheck/fail to tell Envoy to start draining connections
-func shutdownEnvoy() error {
+func shutdownEnvoy(adminPort int) error {
+	healthcheckFailURL := fmt.Sprintf(healthcheckFailURLFormat, adminPort)
+	/* #nosec */
 	resp, err := http.Post(healthcheckFailURL, "", nil)
 	if err != nil {
 		return fmt.Errorf("creating healthcheck fail POST request failed: %s", err)
@@ -207,8 +216,10 @@ func shutdownEnvoy() error {
 }
 
 // getOpenConnections parses a http request to a prometheus endpoint returning the sum of values found
-func getOpenConnections() (int, error) {
+func getOpenConnections(adminPort int) (int, error) {
+	prometheusURL := fmt.Sprintf(prometheusURLFormat, adminPort)
 	// Make request to Envoy Prometheus endpoint
+	/* #nosec */
 	resp, err := http.Get(prometheusURL)
 	if err != nil {
 		return -1, fmt.Errorf("creating metrics GET request failed: %s", err)
@@ -277,11 +288,12 @@ func registerShutdownManager(cmd *kingpin.CmdClause, log logrus.FieldLogger) (*k
 }
 
 // registerShutdown registers the envoy shutdown sub-command and flags
-func registerShutdown(cmd *kingpin.CmdClause, log logrus.FieldLogger) (*kingpin.CmdClause, *shutdownContext) {
-	ctx := newShutdownContext()
+func registerShutdown(cmd *kingpin.CmdClause, defaultAdminPort int, log logrus.FieldLogger) (*kingpin.CmdClause, *shutdownContext) {
+	ctx := newShutdownContext(defaultAdminPort)
 	ctx.FieldLogger = log.WithField("context", "shutdown")
 
 	shutdown := cmd.Command("shutdown", "Initiate an shutdown sequence which configures Envoy to begin draining connections.")
+	shutdown.Flag("admin-port", "Envoy admin interface port.").IntVar(&ctx.adminPort)
 	shutdown.Flag("check-interval", "Time to poll Envoy for open connections.").DurationVar(&ctx.checkInterval)
 	shutdown.Flag("check-delay", "Time to wait before polling Envoy for open connections.").Default("60s").DurationVar(&ctx.checkDelay)
 	shutdown.Flag("drain-delay", "Time to wait before draining Envoy connections.").Default("0s").DurationVar(&ctx.drainDelay)
