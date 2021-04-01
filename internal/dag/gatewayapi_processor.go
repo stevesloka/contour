@@ -18,6 +18,8 @@ import (
 	"net"
 	"strings"
 
+	contour_api_v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
+
 	"github.com/projectcontour/contour/internal/status"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,6 +62,34 @@ func (p *GatewayAPIProcessor) Run(dag *DAG, source *KubernetesCache) {
 	}
 
 	for _, listener := range p.source.gateway.Spec.Listeners {
+
+		var listenerSecret *Secret
+		var err error
+
+		// Check for TLS on the Gateway.
+		if tls := listener.TLS; tls != nil {
+			// Validate the CertificateRef is configured.
+			if tls.CertificateRef == nil {
+				p.Error(contour_api_v1.ConditionTypeTLSError, "SecretNotConfigured",
+					"Spec.VirtualHost.TLS Secret is not configured")
+				continue
+			}
+
+			// Validate a v1.Secret is referenced which can be kind: secret & group: core.
+			// ref: https://github.com/kubernetes-sigs/gateway-api/pull/562
+			if strings.ToLower(tls.CertificateRef.Kind) != "secret" && strings.ToLower(tls.CertificateRef.Group) != "v1" {
+				p.Error(contour_api_v1.ConditionTypeTLSError, "InvalidReference",
+					"Spec.VirtualHost.TLS Secret must be type v1.Secret")
+				continue
+			}
+
+			listenerSecret, err = p.source.LookupSecret(types.NamespacedName{Name: tls.CertificateRef.Name, Namespace: p.source.gateway.Namespace}, validSecret)
+			if err != nil {
+				p.Errorf(contour_api_v1.ConditionTypeTLSError, "SecretNotValid",
+					"Spec.VirtualHost.TLS Secret %q is invalid: %s", tls.CertificateRef.Name, err)
+				continue
+			}
+		}
 
 		var matchingRoutes []*gatewayapi_v1alpha1.HTTPRoute
 
@@ -106,9 +136,42 @@ func (p *GatewayAPIProcessor) Run(dag *DAG, source *KubernetesCache) {
 
 		// Process all the routes that match this Gateway.
 		for _, matchingRoute := range matchingRoutes {
-			p.computeHTTPRoute(matchingRoute)
+			hosts := p.computeHosts(matchingRoute)
+			p.computeHTTPRoute(matchingRoute, hosts, listenerSecret)
 		}
 	}
+}
+
+func (p *GatewayAPIProcessor) computeHosts(route *gatewayapi_v1alpha1.HTTPRoute) []string {
+	// Determine the hosts on the route, if no hosts
+	// are defined, then set to "*".
+	var hosts []string
+	if len(route.Spec.Hostnames) == 0 {
+		hosts = append(hosts, "*")
+	} else {
+		for _, host := range route.Spec.Hostnames {
+
+			hostname := string(host)
+			if isIP := net.ParseIP(hostname) != nil; isIP {
+				p.Errorf("hostname %q must be a DNS name, not an IP address", hostname)
+				continue
+			}
+			if strings.Contains(hostname, "*") {
+
+				if errs := validation.IsWildcardDNS1123Subdomain(hostname); errs != nil {
+					p.Errorf("invalid hostname %q: %v", hostname, errs)
+					continue
+				}
+			} else {
+				if errs := validation.IsDNS1123Subdomain(hostname); errs != nil {
+					p.Errorf("invalid listener hostname %q", hostname, errs)
+					continue
+				}
+			}
+			hosts = append(hosts, string(host))
+		}
+	}
+	return hosts
 }
 
 // namespaceMatches returns true if the namespaces selector matches
@@ -165,42 +228,13 @@ func selectorMatches(selector metav1.LabelSelector, objLabels map[string]string)
 	return true, nil
 }
 
-func (p *GatewayAPIProcessor) computeHTTPRoute(route *gatewayapi_v1alpha1.HTTPRoute) {
+func (p *GatewayAPIProcessor) computeHTTPRoute(route *gatewayapi_v1alpha1.HTTPRoute, hosts []string, listenerSecret *Secret) {
 	routeAccessor, commit := p.dag.StatusCache.HTTPRouteAccessor(route)
 	defer commit()
 
 	// Validate TLS Configuration
 	if route.Spec.TLS != nil {
 		routeAccessor.AddCondition(status.ConditionNotImplemented, metav1.ConditionTrue, status.ReasonNotImplemented, "HTTPRoute.Spec.TLS: Not yet implemented.")
-	}
-
-	// Determine the hosts on the route, if no hosts
-	// are defined, then set to "*".
-	var hosts []string
-	if len(route.Spec.Hostnames) == 0 {
-		hosts = append(hosts, "*")
-	} else {
-		for _, host := range route.Spec.Hostnames {
-
-			hostname := string(host)
-			if isIP := net.ParseIP(hostname) != nil; isIP {
-				p.Errorf("hostname %q must be a DNS name, not an IP address", hostname)
-				continue
-			}
-			if strings.Contains(hostname, "*") {
-
-				if errs := validation.IsWildcardDNS1123Subdomain(hostname); errs != nil {
-					p.Errorf("invalid hostname %q: %v", hostname, errs)
-					continue
-				}
-			} else {
-				if errs := validation.IsDNS1123Subdomain(hostname); errs != nil {
-					p.Errorf("invalid listener hostname %q", hostname, errs)
-					continue
-				}
-			}
-			hosts = append(hosts, string(host))
-		}
 	}
 
 	for _, rule := range route.Spec.Rules {
@@ -253,10 +287,16 @@ func (p *GatewayAPIProcessor) computeHTTPRoute(route *gatewayapi_v1alpha1.HTTPRo
 		}
 
 		routes := p.routes(pathPrefixes, services)
-		for _, vhost := range hosts {
-			vhost := p.dag.EnsureVirtualHost(ListenerName{Name: vhost, ListenerName: "ingress_http"})
+		for _, host := range hosts {
 			for _, route := range routes {
-				vhost.addRoute(route)
+				if listenerSecret != nil {
+					svhost := p.dag.EnsureSecureVirtualHost(ListenerName{Name: host, ListenerName: "ingress_https"})
+					svhost.Secret = listenerSecret
+					svhost.addRoute(route)
+				} else {
+					vhost := p.dag.EnsureVirtualHost(ListenerName{Name: host, ListenerName: "ingress_http"})
+					vhost.addRoute(route)
+				}
 			}
 		}
 	}
