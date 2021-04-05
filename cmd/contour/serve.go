@@ -372,7 +372,7 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 	// Setup a Manager
 	mgr, err := manager.New(controller_config.GetConfigOrDie(), manager.Options{})
 	if err != nil {
-		log.Fatal(err, "unable to set up overall controller manager")
+		log.Fatal(err, "unable to set up controller manager")
 	}
 
 	// Build the core Kubernetes event handler.

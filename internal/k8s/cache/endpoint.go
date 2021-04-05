@@ -55,21 +55,21 @@ func NewEndpointController(mgr manager.Manager, eventHandler cache.ResourceEvent
 func (r *endpointReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 
 	// Fetch the Service from the cache.
-	svc := &corev1.Endpoints{}
-	err := r.client.Get(ctx, request.NamespacedName, svc)
+	endpoint := &corev1.Endpoints{}
+	err := r.client.Get(ctx, request.NamespacedName, endpoint)
 	if errors.IsNotFound(err) {
 		r.Error(nil, "Could not find Endpoints %q in Namespace %q", request.Name, request.Namespace)
 		return reconcile.Result{}, nil
 	}
 
 	// Check if object is deleted.
-	if !svc.ObjectMeta.DeletionTimestamp.IsZero() {
-		r.eventHandler.OnDelete(svc)
+	if !endpoint.ObjectMeta.DeletionTimestamp.IsZero() {
+		r.eventHandler.OnDelete(endpoint)
 		return reconcile.Result{}, nil
 	}
 
 	// Pass the new changed object off to the eventHandler.
-	r.eventHandler.OnAdd(svc)
+	r.eventHandler.OnAdd(endpoint)
 
 	return reconcile.Result{}, nil
 }

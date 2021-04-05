@@ -55,21 +55,21 @@ func NewNamespaceController(mgr manager.Manager, eventHandler cache.ResourceEven
 func (r *namespaceReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 
 	// Fetch the Namespace from the cache.
-	ingress := &core_v1.Namespace{}
-	err := r.client.Get(ctx, request.NamespacedName, ingress)
+	namespace := &core_v1.Namespace{}
+	err := r.client.Get(ctx, request.NamespacedName, namespace)
 	if errors.IsNotFound(err) {
 		r.Error(nil, "Could not find Namespace %q in Namespace %q", request.Name, request.Namespace)
 		return reconcile.Result{}, nil
 	}
 
 	// Check if object is deleted.
-	if !ingress.ObjectMeta.DeletionTimestamp.IsZero() {
-		r.eventHandler.OnDelete(ingress)
+	if !namespace.ObjectMeta.DeletionTimestamp.IsZero() {
+		r.eventHandler.OnDelete(namespace)
 		return reconcile.Result{}, nil
 	}
 
 	// Pass the new changed object off to the eventHandler.
-	r.eventHandler.OnAdd(ingress)
+	r.eventHandler.OnAdd(namespace)
 
 	return reconcile.Result{}, nil
 }

@@ -55,21 +55,21 @@ func NewTLSRouteController(mgr manager.Manager, eventHandler cache.ResourceEvent
 func (r *tlsRouteReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 
 	// Fetch the TLSRoute from the cache.
-	gateway := &gatewayapi_v1alpha1.TLSRoute{}
-	err := r.client.Get(ctx, request.NamespacedName, gateway)
+	tlsroute := &gatewayapi_v1alpha1.TLSRoute{}
+	err := r.client.Get(ctx, request.NamespacedName, tlsroute)
 	if errors.IsNotFound(err) {
 		r.Error(nil, "Could not find TLSRoute %q in Namespace %q", request.Name, request.Namespace)
 		return reconcile.Result{}, nil
 	}
 
 	// Check if object is deleted.
-	if !gateway.ObjectMeta.DeletionTimestamp.IsZero() {
-		r.eventHandler.OnDelete(gateway)
+	if !tlsroute.ObjectMeta.DeletionTimestamp.IsZero() {
+		r.eventHandler.OnDelete(tlsroute)
 		return reconcile.Result{}, nil
 	}
 
 	// Pass the new changed object off to the eventHandler.
-	r.eventHandler.OnAdd(gateway)
+	r.eventHandler.OnAdd(tlsroute)
 
 	return reconcile.Result{}, nil
 }

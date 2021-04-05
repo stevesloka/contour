@@ -55,21 +55,21 @@ func NewBackendPolicyController(mgr manager.Manager, eventHandler cache.Resource
 func (r *backendPolicyReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 
 	// Fetch the BackendPolicy from the cache.
-	gateway := &gatewayapi_v1alpha1.BackendPolicy{}
-	err := r.client.Get(ctx, request.NamespacedName, gateway)
+	policy := &gatewayapi_v1alpha1.BackendPolicy{}
+	err := r.client.Get(ctx, request.NamespacedName, policy)
 	if errors.IsNotFound(err) {
 		r.Error(nil, "Could not find BackendPolicy %q in Namespace %q", request.Name, request.Namespace)
 		return reconcile.Result{}, nil
 	}
 
 	// Check if object is deleted.
-	if !gateway.ObjectMeta.DeletionTimestamp.IsZero() {
-		r.eventHandler.OnDelete(gateway)
+	if !policy.ObjectMeta.DeletionTimestamp.IsZero() {
+		r.eventHandler.OnDelete(policy)
 		return reconcile.Result{}, nil
 	}
 
 	// Pass the new changed object off to the eventHandler.
-	r.eventHandler.OnAdd(gateway)
+	r.eventHandler.OnAdd(policy)
 
 	return reconcile.Result{}, nil
 }
