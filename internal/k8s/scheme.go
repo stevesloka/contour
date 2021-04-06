@@ -22,11 +22,9 @@ import (
 	gatewayapi_v1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
-// NewContourScheme returns a scheme that includes all the API types
-// that Contour supports as well as the core Kubernetes API types from
-// the default scheme.
-func NewContourScheme() (*runtime.Scheme, error) {
-	s := runtime.NewScheme()
+// NewContourScheme configures a scheme that includes all the API types
+// that Contour supports as well as the core Kubernetes API types.
+func NewContourScheme(s *runtime.Scheme) error {
 	b := runtime.SchemeBuilder{
 		contour_api_v1.AddToScheme,
 		contour_api_v1alpha1.AddToScheme,
@@ -36,8 +34,8 @@ func NewContourScheme() (*runtime.Scheme, error) {
 	}
 
 	if err := b.AddToScheme(s); err != nil {
-		return nil, err
+		return err
 	}
 
-	return s, nil
+	return nil
 }

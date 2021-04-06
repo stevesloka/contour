@@ -19,6 +19,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"k8s.io/apimachinery/pkg/runtime"
+
 	"github.com/projectcontour/contour/internal/certgen"
 	"github.com/projectcontour/contour/internal/k8s"
 	"github.com/projectcontour/contour/pkg/certs"
@@ -136,7 +138,7 @@ func doCertgen(config *certgenConfig, log logrus.FieldLogger) {
 		log.WithError(err).Fatal("failed to generate certificates")
 	}
 
-	clients, err := k8s.NewClients(config.KubeConfig, config.InCluster)
+	clients, err := k8s.NewClients(config.KubeConfig, config.InCluster, runtime.NewScheme())
 	if err != nil {
 		log.WithError(err).Fatalf("failed to create Kubernetes client")
 	}

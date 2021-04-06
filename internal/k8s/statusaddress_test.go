@@ -16,6 +16,8 @@ package k8s
 import (
 	"testing"
 
+	"k8s.io/apimachinery/pkg/runtime"
+
 	contour_api_v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/projectcontour/contour/internal/annotation"
 	"github.com/projectcontour/contour/internal/fixture"
@@ -182,7 +184,7 @@ func TestStatusAddressUpdater(t *testing.T) {
 	log := logrus.New()
 	log.SetLevel(logrus.DebugLevel)
 	emptyLBStatus := v1.LoadBalancerStatus{}
-	converter, err := NewUnstructuredConverter()
+	converter, err := NewUnstructuredConverter(runtime.NewScheme())
 	if err != nil {
 		t.Error(err)
 	}

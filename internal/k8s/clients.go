@@ -16,6 +16,8 @@ package k8s
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/runtime"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
@@ -39,13 +41,13 @@ type Clients struct {
 // NewClients returns a new set of the various API clients required
 // by Contour using the supplied kubeconfig path, or the cluster
 // environment variables if inCluster is true.
-func NewClients(kubeconfig string, inCluster bool) (*Clients, error) {
+func NewClients(kubeconfig string, inCluster bool, s *runtime.Scheme) (*Clients, error) {
 	config, err := newRestConfig(kubeconfig, inCluster)
 	if err != nil {
 		return nil, err
 	}
 
-	scheme, err := NewContourScheme()
+	err = NewContourScheme(s)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +69,7 @@ func NewClients(kubeconfig string, inCluster bool) (*Clients, error) {
 	}
 
 	clients.cache, err = cache.New(config, cache.Options{
-		Scheme: scheme,
+		Scheme: s,
 		Mapper: clients.RESTMapper,
 	})
 	if err != nil {

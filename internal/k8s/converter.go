@@ -60,8 +60,8 @@ type UnstructuredConverter struct {
 }
 
 // NewUnstructuredConverter returns a new UnstructuredConverter initialized
-func NewUnstructuredConverter() (*UnstructuredConverter, error) {
-	s, err := NewContourScheme()
+func NewUnstructuredConverter(s *runtime.Scheme) (*UnstructuredConverter, error) {
+	err := NewContourScheme(s)
 	if err != nil {
 		return nil, err
 	}

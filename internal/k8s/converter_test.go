@@ -17,6 +17,8 @@ import (
 	"errors"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/runtime"
+
 	contour_api_v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	contour_api_v1alpha1 "github.com/projectcontour/contour/apis/projectcontour/v1alpha1"
 	"github.com/stretchr/testify/assert"
@@ -39,7 +41,7 @@ func TestConvertUnstructured(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Helper()
 
-			converter, err := NewUnstructuredConverter()
+			converter, err := NewUnstructuredConverter(runtime.NewScheme())
 			if err != nil {
 				t.Fatal(err)
 			}

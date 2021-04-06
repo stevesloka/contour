@@ -194,8 +194,15 @@ func validateCRDs(dynamicClient dynamic.Interface, log logrus.FieldLogger) {
 
 // doServe runs the contour serve subcommand.
 func doServe(log logrus.FieldLogger, ctx *serveContext) error {
+
+	// Setup a Manager
+	mgr, err := manager.New(controller_config.GetConfigOrDie(), manager.Options{})
+	if err != nil {
+		log.Fatal(err, "unable to set up controller manager")
+	}
+
 	// Establish k8s core & dynamic client connections.
-	clients, err := k8s.NewClients(ctx.Config.Kubeconfig, ctx.Config.InCluster)
+	clients, err := k8s.NewClients(ctx.Config.Kubeconfig, ctx.Config.InCluster, mgr.GetScheme())
 	if err != nil {
 		return fmt.Errorf("failed to create Kubernetes clients: %w", err)
 	}
@@ -236,7 +243,7 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 
 	// Before we can build the event handler, we need to initialize the converter we'll
 	// use to convert from Unstructured.
-	converter, err := k8s.NewUnstructuredConverter()
+	converter, err := k8s.NewUnstructuredConverter(mgr.GetScheme())
 	if err != nil {
 		return err
 	}
@@ -369,12 +376,6 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		log.WithField("context", "envoy-client-certificate").Infof("enabled client certificate with secret: %q", clientCert)
 	}
 
-	// Setup a Manager
-	mgr, err := manager.New(controller_config.GetConfigOrDie(), manager.Options{})
-	if err != nil {
-		log.Fatal(err, "unable to set up controller manager")
-	}
-
 	// Build the core Kubernetes event handler.
 	eventHandler := &contour.EventHandler{
 		HoldoffDelay:    100 * time.Millisecond,
@@ -394,17 +395,17 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		Logger: log.WithField("context", "dynamicHandler"),
 	}
 
-	err = contour_api_v1.AddToScheme(mgr.GetScheme())
-	if err != nil {
-		log.Error(err, "unable to add Contour V1 API to scheme.")
-		os.Exit(1)
-	}
-
-	err = contour_api_v1alpha1.AddToScheme(mgr.GetScheme())
-	if err != nil {
-		log.Error(err, "unable to add Contour Alpha1 API to scheme.")
-		os.Exit(1)
-	}
+	//err = contour_api_v1.AddToScheme(mgr.GetScheme())
+	//if err != nil {
+	//	log.Error(err, "unable to add Contour V1 API to scheme.")
+	//	os.Exit(1)
+	//}
+	//
+	//err = contour_api_v1alpha1.AddToScheme(mgr.GetScheme())
+	//if err != nil {
+	//	log.Error(err, "unable to add Contour Alpha1 API to scheme.")
+	//	os.Exit(1)
+	//}
 
 	// Inform on DefaultResources by setting up each controller and registering the watch event
 	// with controller-runtime.
