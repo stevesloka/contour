@@ -395,18 +395,6 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		Logger: log.WithField("context", "dynamicHandler"),
 	}
 
-	//err = contour_api_v1.AddToScheme(mgr.GetScheme())
-	//if err != nil {
-	//	log.Error(err, "unable to add Contour V1 API to scheme.")
-	//	os.Exit(1)
-	//}
-	//
-	//err = contour_api_v1alpha1.AddToScheme(mgr.GetScheme())
-	//if err != nil {
-	//	log.Error(err, "unable to add Contour Alpha1 API to scheme.")
-	//	os.Exit(1)
-	//}
-
 	// Inform on DefaultResources by setting up each controller and registering the watch event
 	// with controller-runtime.
 
