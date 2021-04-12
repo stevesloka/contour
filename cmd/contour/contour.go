@@ -37,7 +37,7 @@ func main() {
 	bootstrap, bootstrapCtx := registerBootstrap(app)
 
 	// Add a "shutdown" command which initiates an Envoy shutdown sequence.
-	sdmShutdown, sdmShutdownCtx := registerShutdown(envoyCmd, bootstrapCtx.AdminPort, log)
+	sdmShutdown, sdmShutdownCtx := registerShutdown(envoyCmd, log)
 
 	certgenApp, certgenConfig := registerCertGen(app)
 

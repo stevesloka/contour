@@ -85,17 +85,13 @@ func newShutdownManagerContext() *shutdownmanagerContext {
 	}
 }
 
-func newShutdownContext(defaultAdminPort int) *shutdownContext {
-	// Set defaults for parameters which are then overridden via flags, ENV, or ConfigFile
-	if defaultAdminPort == 0 {
-		defaultAdminPort = 9001 // default port
-	}
+func newShutdownContext() *shutdownContext {
 	return &shutdownContext{
 		checkInterval:      5 * time.Second,
 		checkDelay:         60 * time.Second,
 		drainDelay:         0,
 		minOpenConnections: 0,
-		adminPort:          defaultAdminPort,
+		adminPort:          9001,
 	}
 }
 
@@ -143,6 +139,9 @@ func (s *shutdownmanagerContext) shutdownReadyHandler(w http.ResponseWriter, r *
 // shutdownHandler is called from a pod preStop hook, where it will block pod shutdown
 // until envoy is able to drain connections to below the min-open threshold.
 func (s *shutdownContext) shutdownHandler() {
+
+	fmt.Println("---admin-port: ", s.adminPort)
+
 	s.WithField("context", "shutdownHandler").Infof("waiting %s before draining connections", s.drainDelay)
 	time.Sleep(s.drainDelay)
 
@@ -288,8 +287,8 @@ func registerShutdownManager(cmd *kingpin.CmdClause, log logrus.FieldLogger) (*k
 }
 
 // registerShutdown registers the envoy shutdown sub-command and flags
-func registerShutdown(cmd *kingpin.CmdClause, defaultAdminPort int, log logrus.FieldLogger) (*kingpin.CmdClause, *shutdownContext) {
-	ctx := newShutdownContext(defaultAdminPort)
+func registerShutdown(cmd *kingpin.CmdClause, log logrus.FieldLogger) (*kingpin.CmdClause, *shutdownContext) {
+	ctx := newShutdownContext()
 	ctx.FieldLogger = log.WithField("context", "shutdown")
 
 	shutdown := cmd.Command("shutdown", "Initiate an shutdown sequence which configures Envoy to begin draining connections.")
