@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/projectcontour/contour/internal/controller"
+	"github.com/projectcontour/contour/internal/workgroup"
 
 	envoy_server_v3 "github.com/envoyproxy/go-control-plane/pkg/server/v3"
 	contour_api_v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -39,7 +40,6 @@ import (
 	"github.com/projectcontour/contour/internal/k8s"
 	"github.com/projectcontour/contour/internal/metrics"
 	"github.com/projectcontour/contour/internal/timeout"
-	"github.com/projectcontour/contour/internal/workgroup"
 	"github.com/projectcontour/contour/internal/xds"
 	contour_xds_v3 "github.com/projectcontour/contour/internal/xds/v3"
 	"github.com/projectcontour/contour/internal/xdscache"
@@ -162,6 +162,7 @@ func registerServe(app *kingpin.Application) (*kingpin.CmdClause, *serveContext)
 // if they have spec.preserveUnknownFields set to true, since this indicates that they
 // were created as v1beta1 and the user has not upgraded them to be fully v1-compatible.
 func validateCRDs(dynamicClient dynamic.Interface, log logrus.FieldLogger) {
+
 	client := dynamicClient.Resource(schema.GroupVersionResource{Group: "apiextensions.k8s.io", Version: "v1", Resource: "customresourcedefinitions"})
 
 	crds, err := client.List(context.TODO(), metav1.ListOptions{})
@@ -194,6 +195,10 @@ func validateCRDs(dynamicClient dynamic.Interface, log logrus.FieldLogger) {
 
 // doServe runs the contour serve subcommand.
 func doServe(log logrus.FieldLogger, ctx *serveContext) error {
+
+	// Set up workgroup runner
+	var g workgroup.Group
+
 	// Establish k8s core & dynamic client connections.
 	clients, err := k8s.NewClients(ctx.Config.Kubeconfig, ctx.Config.InCluster)
 	if err != nil {
@@ -203,47 +208,18 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 	// Validate that Contour CRDs have been updated to v1.
 	validateCRDs(clients.DynamicClient(), log)
 
-	// informerNamespaces is a list of namespaces that we should start informers for.
-	var informerNamespaces []string
-
 	fallbackCert := namespacedNameOf(ctx.Config.TLS.FallbackCertificate)
 	clientCert := namespacedNameOf(ctx.Config.TLS.ClientCertificate)
 
-	if rootNamespaces := ctx.proxyRootNamespaces(); len(rootNamespaces) > 0 {
-		informerNamespaces = append(informerNamespaces, rootNamespaces...)
-
-		// Add the FallbackCertificateNamespace to informerNamespaces if it isn't present.
-		if !contains(informerNamespaces, ctx.Config.TLS.FallbackCertificate.Namespace) && fallbackCert != nil {
-			informerNamespaces = append(informerNamespaces, ctx.Config.TLS.FallbackCertificate.Namespace)
-			log.WithField("context", "fallback-certificate").
-				Infof("fallback certificate namespace %q not defined in 'root-namespaces', adding namespace to watch",
-					ctx.Config.TLS.FallbackCertificate.Namespace)
-		}
-
-		// Add the client certificate namespace to informerNamespaces if it isn't present.
-		if !contains(informerNamespaces, ctx.Config.TLS.ClientCertificate.Namespace) && clientCert != nil {
-			informerNamespaces = append(informerNamespaces, ctx.Config.TLS.ClientCertificate.Namespace)
-			log.WithField("context", "envoy-client-certificate").
-				Infof("client certificate namespace %q not defined in 'root-namespaces', adding namespace to watch",
-					ctx.Config.TLS.ClientCertificate.Namespace)
-		}
-	}
+	// informerNamespaces is a list of namespaces that we should start informers for.
+	informerNamespaces := getInformerNamespaces(log, ctx.Config.TLS.FallbackCertificate.Namespace,
+		ctx.Config.TLS.ClientCertificate.Namespace, ctx.proxyRootNamespaces(), fallbackCert, clientCert)
 
 	// Set up Prometheus registry and register base metrics.
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
 	registry.MustRegister(prometheus.NewGoCollector())
-
-	// Before we can build the event handler, we need to initialize the converter we'll
-	// use to convert from Unstructured.
-	converter, err := k8s.NewUnstructuredConverter()
-	if err != nil {
-		return err
-	}
-
-	// XXX(jpeach) we know the config file validated, so all
-	// the timeouts will parse. Shall we add a `timeout.MustParse()`
-	// and use it here?
+	contourMetrics := metrics.NewMetrics(registry)
 
 	connectionIdleTimeout, err := timeout.Parse(ctx.Config.Timeouts.ConnectionIdleTimeout)
 	if err != nil {
@@ -269,11 +245,17 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 	if err != nil {
 		return fmt.Errorf("error parsing request timeout: %w", err)
 	}
-
 	// connection balancer
 	if ok := ctx.Config.Listener.ConnectionBalancer == "exact" || ctx.Config.Listener.ConnectionBalancer == ""; !ok {
 		log.Warnf("Invalid listener connection balancer value %q. Only 'exact' connection balancing is supported for now.", ctx.Config.Listener.ConnectionBalancer)
 		ctx.Config.Listener.ConnectionBalancer = ""
+	}
+
+	// Before we can build the event handler, we need to initialize the converter we'll
+	// use to convert from Unstructured.
+	converter, err := k8s.NewUnstructuredConverter()
+	if err != nil {
+		return err
 	}
 
 	listenerConfig := xdscache_v3.ListenerConfig{
@@ -341,8 +323,6 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		}
 	}
 
-	contourMetrics := metrics.NewMetrics(registry)
-
 	// Endpoints updates are handled directly by the EndpointsTranslator
 	// due to their high update rate and their orthogonal nature.
 	endpointHandler := xdscache_v3.NewEndpointsTranslator(log.WithField("context", "endpointstranslator"))
@@ -389,24 +369,8 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		Logger:    log.WithField("context", "dynamicHandler"),
 	}
 
-	// Inform on DefaultResources.
-	for _, r := range k8s.DefaultResources() {
-		inf, err := clients.InformerForResource(r)
-		if err != nil {
-			log.WithError(err).WithField("resource", r).Fatal("failed to create informer")
-		}
-
-		inf.AddEventHandler(&dynamicHandler)
-	}
-
-	for _, r := range k8s.IngressV1Resources() {
-		if err := informOnResource(clients, r, &dynamicHandler); err != nil {
-			log.WithError(err).WithField("resource", r).Fatal("failed to create informer")
-		}
-	}
-
-	// Set up workgroup runner and register informers.
-	var g workgroup.Group
+	// Register informers
+	informOnDefaultResources(log, clients, &dynamicHandler, converter, endpointHandler, contourMetrics, informerNamespaces)
 
 	// Only inform on GatewayAPI resources if Gateway API is found.
 	if ctx.Config.GatewayConfig != nil {
@@ -453,34 +417,6 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		}
 	}
 
-	// Inform on secrets, filtering by root namespaces.
-	for _, r := range k8s.SecretsResources() {
-		var handler cache.ResourceEventHandler = &dynamicHandler
-
-		// If root namespaces are defined, filter for secrets in only those namespaces.
-		if len(informerNamespaces) > 0 {
-			handler = k8s.NewNamespaceFilter(informerNamespaces, &dynamicHandler)
-		}
-
-		if err := informOnResource(clients, r, handler); err != nil {
-			log.WithError(err).WithField("resource", r).Fatal("failed to create informer")
-		}
-	}
-
-	// Inform on endpoints.
-	for _, r := range k8s.EndpointsResources() {
-		if err := informOnResource(clients, r, &k8s.DynamicClientHandler{
-			Next: &contour.EventRecorder{
-				Next:    endpointHandler,
-				Counter: contourMetrics.EventHandlerOperations,
-			},
-			Converter: converter,
-			Logger:    log.WithField("context", "endpointstranslator"),
-		}); err != nil {
-			log.WithError(err).WithField("resource", r).Fatal("failed to create informer")
-		}
-	}
-
 	// Register a task to start all the informers.
 	g.AddContext(func(taskCtx context.Context) error {
 		log := log.WithField("context", "informers")
@@ -500,21 +436,7 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 	g.Add(eventHandler.Start())
 
 	// Create metrics service and register with workgroup.
-	metricsvc := httpsvc.Service{
-		Addr:        ctx.metricsAddr,
-		Port:        ctx.metricsPort,
-		FieldLogger: log.WithField("context", "metricsvc"),
-		ServeMux:    http.ServeMux{},
-	}
-
-	metricsvc.ServeMux.Handle("/metrics", metrics.Handler(registry))
-
-	if ctx.healthAddr == ctx.metricsAddr && ctx.healthPort == ctx.metricsPort {
-		h := health.Handler(clients.ClientSet())
-		metricsvc.ServeMux.Handle("/health", h)
-		metricsvc.ServeMux.Handle("/healthz", h)
-	}
-
+	metricsvc := getMetricSvc(log, ctx, registry, clients)
 	g.Add(metricsvc.Start)
 
 	// Create a separate health service if required.
@@ -681,6 +603,24 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 	return g.Run(context.Background())
 }
 
+func getMetricSvc(log logrus.FieldLogger, ctx *serveContext, registry *prometheus.Registry, clients *k8s.Clients) httpsvc.Service {
+	metricsvc := httpsvc.Service{
+		Addr:        ctx.metricsAddr,
+		Port:        ctx.metricsPort,
+		FieldLogger: log.WithField("context", "metricsvc"),
+		ServeMux:    http.ServeMux{},
+	}
+
+	metricsvc.ServeMux.Handle("/metrics", metrics.Handler(registry))
+
+	if ctx.healthAddr == ctx.metricsAddr && ctx.healthPort == ctx.metricsPort {
+		h := health.Handler(clients.ClientSet())
+		metricsvc.ServeMux.Handle("/health", h)
+		metricsvc.ServeMux.Handle("/healthz", h)
+	}
+	return metricsvc
+}
+
 func getDAGBuilder(ctx *serveContext, clients *k8s.Clients, clientCert, fallbackCert *types.NamespacedName, log logrus.FieldLogger) dag.Builder {
 	var requestHeadersPolicy dag.HeadersPolicy
 	if ctx.Config.Policy.RequestHeadersPolicy.Set != nil {
@@ -784,4 +724,72 @@ func informOnResource(clients *k8s.Clients, gvr schema.GroupVersionResource, han
 
 	inf.AddEventHandler(handler)
 	return nil
+}
+
+func informOnDefaultResources(log logrus.FieldLogger, clients *k8s.Clients, dynamicHandler *k8s.DynamicClientHandler,
+	converter *k8s.UnstructuredConverter, endpointHandler *xdscache_v3.EndpointsTranslator, contourMetrics *metrics.Metrics,
+	informerNamespaces []string) error {
+
+	// Inform on DefaultResources.
+	for _, r := range k8s.DefaultResources() {
+		if err := informOnResource(clients, r, dynamicHandler); err != nil {
+			log.WithError(err).WithField("resource", r).Fatal("failed to create informer")
+		}
+	}
+
+	// Inform on secrets, filtering by root namespaces.
+	for _, r := range k8s.SecretsResources() {
+		var handler cache.ResourceEventHandler = dynamicHandler
+
+		// If root namespaces are defined, filter for secrets in only those namespaces.
+		if len(informerNamespaces) > 0 {
+			handler = k8s.NewNamespaceFilter(informerNamespaces, dynamicHandler)
+		}
+
+		if err := informOnResource(clients, r, handler); err != nil {
+			log.WithError(err).WithField("resource", r).Fatal("failed to create informer")
+		}
+	}
+
+	// Inform on endpoints.
+	for _, r := range k8s.EndpointsResources() {
+		if err := informOnResource(clients, r, &k8s.DynamicClientHandler{
+			Next: &contour.EventRecorder{
+				Next:    endpointHandler,
+				Counter: contourMetrics.EventHandlerOperations,
+			},
+			Converter: converter,
+			Logger:    log.WithField("context", "endpointstranslator"),
+		}); err != nil {
+			log.WithError(err).WithField("resource", r).Fatal("failed to create informer")
+		}
+	}
+
+	return nil
+}
+
+func getInformerNamespaces(log logrus.FieldLogger, fallbackCertNamespace, clientCertNamespace string, rootNamespaces []string, fallbackCert *types.NamespacedName, clientCert *types.NamespacedName) []string {
+	var informerNamespaces []string
+
+	if len(rootNamespaces) > 0 {
+		informerNamespaces = append(informerNamespaces, rootNamespaces...)
+
+		// Add the FallbackCertificateNamespace to informerNamespaces if it isn't present.
+		if !contains(informerNamespaces, fallbackCertNamespace) && fallbackCert != nil {
+			informerNamespaces = append(informerNamespaces, fallbackCertNamespace)
+			log.WithField("context", "fallback-certificate").
+				Infof("fallback certificate namespace %q not defined in 'root-namespaces', adding namespace to watch",
+					fallbackCertNamespace)
+		}
+
+		// Add the client certificate namespace to informerNamespaces if it isn't present.
+		if !contains(informerNamespaces, clientCertNamespace) && clientCert != nil {
+			informerNamespaces = append(informerNamespaces, clientCertNamespace)
+			log.WithField("context", "envoy-client-certificate").
+				Infof("client certificate namespace %q not defined in 'root-namespaces', adding namespace to watch",
+					clientCertNamespace)
+		}
+	}
+
+	return informerNamespaces
 }

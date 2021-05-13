@@ -38,11 +38,6 @@ func DefaultResources() []schema.GroupVersionResource {
 		contour_api_v1.TLSCertificateDelegationGVR,
 		contour_api_v1alpha1.ExtensionServiceGVR,
 		corev1.SchemeGroupVersion.WithResource("services"),
-	}
-}
-
-func IngressV1Resources() []schema.GroupVersionResource {
-	return []schema.GroupVersionResource{
 		networking_v1.SchemeGroupVersion.WithResource("ingresses"),
 		networking_v1.SchemeGroupVersion.WithResource("ingressclasses"),
 	}
