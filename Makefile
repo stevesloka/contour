@@ -323,8 +323,8 @@ site-devel: ## Launch the website
 
 .PHONY: site-check
 site-check: ## Test the site's links
-	# TODO: Clean up to use htmltest
-
+	cd site && rm -rf public && hugo
+	htmltest
 
 # Tools for testing and troubleshooting
 

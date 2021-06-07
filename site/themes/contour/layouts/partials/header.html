@@ -6,7 +6,7 @@
 			<li><a href="/getting-started/" {{ if (eq .RelPermalink "/getting-started/")  }}class="active"{{ end }}>Getting Started</a></li>
 			<li><a href="/guides/" {{ if (eq .RelPermalink "/guides/")  }}class="active"{{ end }}>Guides</a></li>
 			<li><a href="/community/" {{ if (eq .RelPermalink "/community/")  }}class="active"{{ end }}>Community</a></li>
-			<li><a href="/docs/{{ $latest }}" {{ if (eq .Page.Section "docs") }}class="active"{{ end }}>Documentation</a></li>
+			<li><a href="/docs/{{ $latest }}/" {{ if (eq .Page.Section "docs") }}class="active"{{ end }}>Documentation</a></li>
 			<li><a href="/resources/" {{ if (eq .RelPermalink "/resources/")  }}class="active"{{ end }}>Resources</a></li>
 			<li><a href="/blog/" {{ if or (eq .Page.Section "posts") (eq .Page.Section "tags") }}class="active"{{ end }}>Blog</a></li>
 		</ul>
@@ -19,15 +19,15 @@
 				<li><a href="/getting-started/" {{ if (eq .RelPermalink "/getting-started/")  }}class="active"{{ end }}>Getting Started</a></li>
 				<li><a href="/guides/" {{ if (eq .RelPermalink "/guides/")  }}class="active"{{ end }}>Guides</a></li>
 				<li><a href="/community/" {{ if (eq .RelPermalink "/community/")  }}class="active"{{ end }}>Community</a></li>
-				<li><a href="/docs/{{ $latest }}" {{ if (eq .Page.Section "docs") }}class="active"{{ end }}>Documentation</a></li>
+				<li><a href="/docs/{{ $latest }}/" {{ if (eq .Page.Section "docs") }}class="active"{{ end }}>Documentation</a></li>
 				<li><a href="/resources/" {{ if (eq .RelPermalink "/resources/")  }}class="active"{{ end }}>Resources</a></li>
 				<li><a href="/blog/" {{ if or (eq .Page.Section "posts") (eq .Page.Section "tags") }}class="active"{{ end }}>Blog</a></li>
 			</ul>
 			<div class="social">
-				<a href="https://twitter.com/projectcontour"><img src="/img/twitter.png" />Twitter</a>
-				<a href="https://kubernetes.slack.com/?redir=%2Fmessages%2Fcontour"><img src="/img/slack.png" />Slack</a>
-				<a href="/blog/feed.xml"><img src="/img/rss.png" />RSS</a>
-				<a href="https://github.com/projectcontour/contour"><img src="/img/github.svg" />GitHub</a>
+				<a href="https://twitter.com/projectcontour"><img src="/img/twitter.png" alt="Twitter" />Twitter</a>
+				<a href="https://kubernetes.slack.com/?redir=%2Fmessages%2Fcontour"><img src="/img/slack.png" alt="Contour Slack" />Slack</a>
+				<a href="/blog/feed.xml"><img src="/img/rss.png" alt="RSS Feed" />RSS</a>
+				<a href="https://github.com/projectcontour/contour"><img src="/img/github.svg" alt="Github" />GitHub</a>
 			</div>
 		</div>
 	</div>

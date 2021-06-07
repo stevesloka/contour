@@ -1,0 +1,4 @@
+DirectoryPath: "site/public"
+CacheExpires: "6h"
+IgnoreDirectoryMissingTrailingSlash: true
+OutputDir: /tmp

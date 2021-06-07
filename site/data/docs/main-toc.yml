@@ -2,55 +2,55 @@ toc:
   - title: Introduction
     subfolderitems:
       - page: Contour Architecture
-        url: /architecture
+        url: /architecture/
       - page: Contour Philosophy
-        link: /resources/philosophy
+        link: /resources/philosophy/
   - title: Configuration
     subfolderitems:
       - page: HTTPProxy Fundamentals
-        url: /config/fundamentals
+        url: /config/fundamentals/
       - page: Virtual Hosts
-        url: /config/virtual-hosts
+        url: /config/virtual-hosts/
       - page: Inclusion and Delegation
-        url: /config/inclusion-delegation
+        url: /config/inclusion-delegation/
       - page: TLS Termination
-        url: /config/tls-termination
+        url: /config/tls-termination/
       - page: Upstream TLS
-        url: /config/upstream-tls
+        url: /config/upstream-tls/
       - page: Request Routing
-        url: /config/request-routing
+        url: /config/request-routing/
       - page: External Service Routing
-        url: /config/external-service-routing
+        url: /config/external-service-routing/
       - page: Request Rewriting
-        url: /config/request-rewriting
+        url: /config/request-rewriting/
       - page: CORS
-        url: /config/cors
+        url: /config/cors/
       - page: Websockets
-        url: /config/websockets
+        url: /config/websockets/
       - page: Upstream Health Checks
-        url: /config/health-checks
+        url: /config/health-checks/
       - page: Client Authorization
-        url: /config/client-authorization
+        url: /config/client-authorization/
       - page: TLS Delegation
-        url: /config/tls-delegation
+        url: /config/tls-delegation/
       - page: Rate Limiting
-        url: /config/rate-limiting
+        url: /config/rate-limiting/
       - page: Annotations Reference
-        url: /config/annotations
+        url: /config/annotations/
       - page: API Reference
-        url: /config/api
+        url: /config/api/
   - title: Deployment
     subfolderitems:
       - page: Deployment Options
-        url: /deploy-options
+        url: /deploy-options/
       - page: Contour Configuration
-        url: /configuration
+        url: /configuration/
       - page: Upgrading Contour
-        link: /resources/upgrading
+        link: /resources/upgrading/
       - page: Enabling TLS between Envoy and Contour
-        url: /grpc-tls-howto
+        url: /grpc-tls-howto/
       - page: Redeploy Envoy
-        url: /redeploy-envoy
+        url: /redeploy-envoy/
   - title: Guides
     subfolderitems:
       - page: AWS with NLB
@@ -72,36 +72,36 @@ toc:
   - title: Troubleshooting
     subfolderitems:
       - page: Envoy Administration Access
-        url: /troubleshooting/envoy-admin-interface
+        url: /troubleshooting/envoy-admin-interface/
       - page: Contour Debug Logging
-        url: /troubleshooting/contour-debug-log
+        url: /troubleshooting/contour-debug-log/
       - page: Envoy Debug Logging
-        url: /troubleshooting/envoy-debug-log
+        url: /troubleshooting/envoy-debug-log/
       - page: Visualize the Contour Graph
-        url: /troubleshooting/contour-graph
+        url: /troubleshooting/contour-graph/
       - page: Show Contour xDS Resources
-        url: /troubleshooting/contour-xds-resources
+        url: /troubleshooting/contour-xds-resources/
       - page: Profiling Contour
-        url: /troubleshooting/profiling-contour
+        url: /troubleshooting/profiling-contour/
       - page: Contour Operator
-        url: /troubleshooting/operator
+        url: /troubleshooting/operator/
   - title: Resources
     subfolderitems:
       - page: Support Policy
-        link: /resources/support
+        link: /resources/support/
       - page: Compatibility Matrix
         link: /resources/compatibility-matrix
       - page: Contour Deprecation Policy
-        link: /resources/deprecation-policy
+        link: /resources/deprecation-policy/
       - page: Release Process
-        link: /resources/release-process
+        link: /resources/release-process/
       - page: Frequently Asked Questions
-        link: /resources/faq
+        link: /resources/faq/
       - page: Tagging
-        link: /resources/tagging
+        link: /resources/tagging/
   - title: Contribute
     subfolderitems:
       - page: Start Contributing
         url: /start-contributing
       - page: How We Work
-        link: /resources/how-we-work
+        link: /resources/how-we-work/

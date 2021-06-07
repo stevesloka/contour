@@ -2,29 +2,29 @@ toc:
   - title: Introduction
     subfolderitems:
       - page: Contour Architecture
-        url: /architecture
+        url: /architecture/
       - page: Contour Philosophy
-        link: /resources/philosophy
+        link: /resources/philosophy/
   - title: Configuration
     subfolderitems:
       - page: Annotations
         url: /annotations
       - page: Config File
-        url: /configuration
+        url: /configuration/
   - title: Use
     subfolderitems:
       - page: HTTPProxy
-        url: /httpproxy
+        url: /httpproxy/
       - page: IngressRoute
-        url: /ingressroute
+        url: /ingressroute/
   - title: Deploy
     subfolderitems:
       - page: Deployment
-        url: /deploy-options
+        url: /deploy-options/
       - page: Upgrade
-        link: /resources/upgrading
+        link: /resources/upgrading/
       - page: Enabling TLS between Envoy and Contour
-        url: /grpc-tls-howto
+        url: /grpc-tls-howto/
   - title: Guides
     subfolderitems:
       - page: Cert-Manager
@@ -44,22 +44,22 @@ toc:
   - title: Troubleshoot
     subfolderitems:
       - page: Troubleshooting
-        url: /troubleshooting
+        url: /troubleshooting/
   - title: Resources
     subfolderitems:
       - page: Envoy Support Matrix
-        link: /resources/envoy
+        link: /resources/envoy/
       - page: How We Work
-        link: /resources/how-we-work
+        link: /resources/how-we-work/
       - page: Release Process
-        link: /resources/release-process
+        link: /resources/release-process/
       - page: Frequently Asked Questions
-        link: /resources/faq
+        link: /resources/faq/
       - page: Support
-        link: /resources/support
+        link: /resources/support/
       - page: Tagging
-        link: /resources/tagging
+        link: /resources/tagging/
   - title: Contribute
     subfolderitems:
       - page: Start Contributing
-        url: /start-contributing
+        url: /start-contributing/

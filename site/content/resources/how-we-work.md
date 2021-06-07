@@ -47,7 +47,7 @@ As Kent beck said, ["make the change easy, then make the easy change."][2]
 Github issues should be triaged and have their status recorded.
 Triaging issues and labeling them appropriately makes it easy for the issue submitter and other contributors to see what the state of an issue is at any time.
 The goal of triaging an issue is to make a decision about what should be done with it.
-The issue should investigated enough to fully understand and document the problem and then decide whether the issue should be addressed by the project.
+The issue should be investigated enough to fully understand and document the problem and then decide whether the issue should be addressed by the project.
 It may not be necessary to decide how an issue should be addressed during triage, since that could involve substantial research and design.
 
 - To be considered triaged, an issue must have the "lifecycle/accepted" label.

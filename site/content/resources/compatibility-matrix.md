@@ -91,7 +91,6 @@ __Note:__ This list of extensions was last verified to be complete with Envoy v1
 
 
 [1]: {{< param github_url >}}/tree/{{< param latest_version >}}/examples/contour
-
 [2]: https://www.envoyproxy.io/docs/envoy/latest/version_history/v1.14.1
 [3]: https://www.envoyproxy.io/docs/envoy/latest/version_history/v1.14.2
 [4]: https://www.envoyproxy.io/docs/envoy/latest/version_history/v1.14.3
