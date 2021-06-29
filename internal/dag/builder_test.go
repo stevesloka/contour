@@ -133,12 +133,49 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		},
 	}
 
+	validClass := &gatewayapi_v1alpha1.GatewayClass{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-validClass",
+		},
+		Spec: gatewayapi_v1alpha1.GatewayClassSpec{
+			Controller: "projectcontour.io/contour",
+		},
+		Status: gatewayapi_v1alpha1.GatewayClassStatus{
+			Conditions: []metav1.Condition{
+				{
+					Type:   string(gatewayapi_v1alpha1.GatewayClassConditionStatusAdmitted),
+					Status: metav1.ConditionTrue,
+				},
+			},
+		},
+	}
+
+	notAdmittedClass := &gatewayapi_v1alpha1.GatewayClass{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-validClass",
+		},
+		Spec: gatewayapi_v1alpha1.GatewayClassSpec{
+			Controller: "projectcontour.io/contour",
+		},
+		Status: gatewayapi_v1alpha1.GatewayClassStatus{
+			Conditions: []metav1.Condition{
+				{
+					Type:   string(gatewayapi_v1alpha1.GatewayClassConditionStatusAdmitted),
+					Status: metav1.ConditionFalse,
+				},
+			},
+		},
+	}
+
 	gatewayWithSelector := &gatewayapi_v1alpha1.Gateway{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "contour",
 			Namespace: "projectcontour",
 		},
 		Spec: gatewayapi_v1alpha1.GatewaySpec{
+			GatewayClassName: validClass.Name,
 			Listeners: []gatewayapi_v1alpha1.Listener{{
 				Port:     80,
 				Protocol: gatewayapi_v1alpha1.HTTPProtocolType,
@@ -180,6 +217,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			Namespace: "projectcontour",
 		},
 		Spec: gatewayapi_v1alpha1.GatewaySpec{
+			GatewayClassName: validClass.Name,
 			Listeners: []gatewayapi_v1alpha1.Listener{{
 				Port:     80,
 				Hostname: &hostname,
@@ -210,6 +248,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			Namespace: "projectcontour",
 		},
 		Spec: gatewayapi_v1alpha1.GatewaySpec{
+			GatewayClassName: validClass.Name,
 			Listeners: []gatewayapi_v1alpha1.Listener{{
 				Port:     80,
 				Hostname: &wildcardHostname,
@@ -234,12 +273,70 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		},
 	}
 
+	gatewayWithNotAdmittedClass := &gatewayapi_v1alpha1.Gateway{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "contour",
+			Namespace: "projectcontour",
+		},
+		Spec: gatewayapi_v1alpha1.GatewaySpec{
+			GatewayClassName: notAdmittedClass.Name,
+			Listeners: []gatewayapi_v1alpha1.Listener{{
+				Port:     80,
+				Hostname: &wildcardHostname,
+				Protocol: gatewayapi_v1alpha1.HTTPProtocolType,
+				Routes: gatewayapi_v1alpha1.RouteBindingSelector{
+					Kind: KindHTTPRoute,
+					Namespaces: &gatewayapi_v1alpha1.RouteNamespaces{
+						From: routeSelectTypePtr(gatewayapi_v1alpha1.RouteSelectSame),
+					},
+					Selector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app": "contour",
+						},
+						MatchExpressions: []metav1.LabelSelectorRequirement{{
+							Key:      "type",
+							Operator: "In",
+							Values:   []string{"controller"},
+						}},
+					},
+				},
+			}},
+		},
+	}
+
+	gatewayWithAddresses := &gatewayapi_v1alpha1.Gateway{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "contour",
+			Namespace: "projectcontour",
+		},
+		Spec: gatewayapi_v1alpha1.GatewaySpec{
+			GatewayClassName: validClass.Name,
+			Addresses: []gatewayapi_v1alpha1.GatewayAddress{
+				{
+					Type:  gatewayAddressTypePtr(gatewayapi_v1alpha1.IPAddressType),
+					Value: "1.2.3.4",
+				},
+			},
+			Listeners: []gatewayapi_v1alpha1.Listener{{
+				Port:     80,
+				Protocol: gatewayapi_v1alpha1.HTTPProtocolType,
+				Routes: gatewayapi_v1alpha1.RouteBindingSelector{
+					Kind: KindHTTPRoute,
+					Namespaces: &gatewayapi_v1alpha1.RouteNamespaces{
+						From: routeSelectTypePtr(gatewayapi_v1alpha1.RouteSelectAll),
+					},
+				},
+			}},
+		},
+	}
+
 	gatewayTLSRouteNoSelector := &gatewayapi_v1alpha1.Gateway{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "contour",
 			Namespace: "projectcontour",
 		},
 		Spec: gatewayapi_v1alpha1.GatewaySpec{
+			GatewayClassName: validClass.Name,
 			Listeners: []gatewayapi_v1alpha1.Listener{{
 				Port:     80,
 				Protocol: gatewayapi_v1alpha1.TLSProtocolType,
@@ -262,6 +359,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			Namespace: "projectcontour",
 		},
 		Spec: gatewayapi_v1alpha1.GatewaySpec{
+			GatewayClassName: validClass.Name,
 			Listeners: []gatewayapi_v1alpha1.Listener{{
 				Port:     80,
 				Protocol: gatewayapi_v1alpha1.TLSProtocolType,
@@ -284,6 +382,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			Namespace: "projectcontour",
 		},
 		Spec: gatewayapi_v1alpha1.GatewaySpec{
+			GatewayClassName: validClass.Name,
 			Listeners: []gatewayapi_v1alpha1.Listener{{
 				Port:     443,
 				Protocol: gatewayapi_v1alpha1.TLSProtocolType,
@@ -311,6 +410,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			Namespace: "projectcontour",
 		},
 		Spec: gatewayapi_v1alpha1.GatewaySpec{
+			GatewayClassName: validClass.Name,
 			Listeners: []gatewayapi_v1alpha1.Listener{{
 				Port:     80,
 				Protocol: gatewayapi_v1alpha1.HTTPProtocolType,
@@ -330,6 +430,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			Namespace: "projectcontour",
 		},
 		Spec: gatewayapi_v1alpha1.GatewaySpec{
+			GatewayClassName: validClass.Name,
 			Listeners: []gatewayapi_v1alpha1.Listener{{
 				Port:     80,
 				Protocol: gatewayapi_v1alpha1.TLSProtocolType,
@@ -363,6 +464,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			Namespace: "projectcontour",
 		},
 		Spec: gatewayapi_v1alpha1.GatewaySpec{
+			GatewayClassName: validClass.Name,
 			Listeners: []gatewayapi_v1alpha1.Listener{{
 				Port:     443,
 				Protocol: gatewayapi_v1alpha1.HTTPSProtocolType,
@@ -389,6 +491,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			Namespace: "projectcontour",
 		},
 		Spec: gatewayapi_v1alpha1.GatewaySpec{
+			GatewayClassName: validClass.Name,
 			Listeners: []gatewayapi_v1alpha1.Listener{{
 				Port:     80,
 				Protocol: gatewayapi_v1alpha1.HTTPProtocolType,
@@ -424,6 +527,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			Namespace: "projectcontour",
 		},
 		Spec: gatewayapi_v1alpha1.GatewaySpec{
+			GatewayClassName: validClass.Name,
 			Listeners: []gatewayapi_v1alpha1.Listener{{
 				Port:     80,
 				Protocol: gatewayapi_v1alpha1.HTTPProtocolType,
@@ -521,6 +625,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			Namespace: "projectcontour",
 		},
 		Spec: gatewayapi_v1alpha1.GatewaySpec{
+			GatewayClassName: validClass.Name,
 			Listeners: []gatewayapi_v1alpha1.Listener{{
 				Port:     80,
 				Protocol: gatewayapi_v1alpha1.HTTPProtocolType,
@@ -540,6 +645,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			Namespace: "projectcontour",
 		},
 		Spec: gatewayapi_v1alpha1.GatewaySpec{
+			GatewayClassName: validClass.Name,
 			Listeners: []gatewayapi_v1alpha1.Listener{{
 				Port:     80,
 				Protocol: gatewayapi_v1alpha1.HTTPProtocolType,
@@ -569,6 +675,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			Namespace: "projectcontour",
 		},
 		Spec: gatewayapi_v1alpha1.GatewaySpec{
+			GatewayClassName: validClass.Name,
 			Listeners: []gatewayapi_v1alpha1.Listener{{
 				Port:     80,
 				Protocol: gatewayapi_v1alpha1.HTTPProtocolType,
@@ -598,6 +705,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			Namespace: "projectcontour",
 		},
 		Spec: gatewayapi_v1alpha1.GatewaySpec{
+			GatewayClassName: validClass.Name,
 			Listeners: []gatewayapi_v1alpha1.Listener{{
 				Port:     80,
 				Protocol: gatewayapi_v1alpha1.HTTPProtocolType,
@@ -614,6 +722,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			Namespace: "projectcontour",
 		},
 		Spec: gatewayapi_v1alpha1.GatewaySpec{
+			GatewayClassName: validClass.Name,
 			Listeners: []gatewayapi_v1alpha1.Listener{{
 				Port:     80,
 				Protocol: gatewayapi_v1alpha1.HTTPProtocolType,
@@ -639,11 +748,13 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		disablePermitInsecure        bool
 		fallbackCertificateName      string
 		fallbackCertificateNamespace string
+		gatewayclass                 *gatewayapi_v1alpha1.GatewayClass
 		gateway                      *gatewayapi_v1alpha1.Gateway
 		want                         []Vertex
 	}{
 		"insert basic single route, single hostname": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				genericHTTPRoute,
@@ -657,9 +768,27 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 				},
 			),
 		},
+		"gateway with unsupported addresses": {
+			gatewayclass: validClass,
+			gateway:      gatewayWithAddresses,
+			objs: []interface{}{
+				kuardService,
+				genericHTTPRoute,
+			},
+			want: listeners(),
+		},
+		"gateway without a gatewayclass": {
+			gateway: gatewayWithSelector,
+			objs: []interface{}{
+				kuardService,
+				genericHTTPRoute,
+			},
+			want: listeners(),
+		},
 		// Test that a gateway without a Selector will select objects.
 		"insert basic single route, single hostname, gateway no selector": {
-			gateway: gatewayNoSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayNoSelector,
 			objs: []interface{}{
 				kuardService,
 				genericHTTPRoute,
@@ -675,7 +804,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		},
 		// Test that a gateway without a Selector will select objects.
 		"insert basic single route, single hostname, gateway same namespace selector": {
-			gateway: gatewayWithSameNamespace,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSameNamespace,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -707,7 +837,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"insert basic single route, single hostname, gateway same namespace selector, route different namespace": {
-			gateway: gatewayWithSameNamespace,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSameNamespace,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -729,7 +860,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"insert basic single route, single hostname, gateway All namespace selector": {
-			gateway: gatewayWithAllNamespace,
+			gatewayclass: validClass,
+			gateway:      gatewayWithAllNamespace,
 			objs: []interface{}{
 				kuardServiceCustomNs,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -761,7 +893,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"insert basic single route, single hostname, gateway From namespace selector": {
-			gateway: gatewayWithNamespaceSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithNamespaceSelector,
 			objs: []interface{}{
 				&v1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
@@ -804,7 +937,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		// HTTPRoute is in a different namespace than the Gateway,
 		// but will be allowed since "All" is set.
 		"HTTPRoute: RouteGateways with GatewayAllowType: All": {
-			gateway: gatewayNoSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayNoSelector,
 			objs: []interface{}{
 				&v1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
@@ -847,7 +981,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		// HTTPRoute is in a different namespace than the Gateway,
 		// and is rejected since "SameNamespace" is set.
 		"HTTPRoute doesn't match with RouteGateways.GatewayAllowType: SameNamespace": {
-			gateway: gatewayNoSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayNoSelector,
 			objs: []interface{}{
 				&v1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
@@ -883,7 +1018,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		// HTTPRoute is in the same namespace of the Gateway,
 		// and is allowed since "SameNamespace" is set.
 		"HTTPRoute matches with RouteGateways.GatewayAllowType: SameNamespace": {
-			gateway: gatewayNoSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayNoSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -917,7 +1053,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		// HTTPRoute references same Gateway is configured with
 		// in the FromList.
 		"HTTPRoute matches with RouteGateways.GatewayAllowType: FromList": {
-			gateway: gatewayNoSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayNoSelector,
 			objs: []interface{}{
 				&v1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
@@ -964,7 +1101,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		// HTTPRoute references different Gateway is configured with
 		// in the FromList.
 		"HTTPRoute doesn't match with RouteGateways.GatewayAllowType: FromList": {
-			gateway: gatewayNoSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayNoSelector,
 			objs: []interface{}{
 				&v1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1002,7 +1140,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"TLSRoute with TLS.Mode=Passthrough is valid": {
-			gateway: gatewayTLSRouteModePassthrough,
+			gatewayclass: validClass,
+			gateway:      gatewayTLSRouteModePassthrough,
 			objs: []interface{}{
 				&v1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1052,6 +1191,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"TLSRoute with TLS.Mode=Passthrough is invalid if certificateRef is specified": {
+			gatewayclass: validClass,
 			gateway: &gatewayapi_v1alpha1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "contour",
@@ -1103,7 +1243,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"TLSRoute with TLS.Mode=Terminate": {
-			gateway: gatewayTLSRouteModeTerminate,
+			gatewayclass: validClass,
+			gateway:      gatewayTLSRouteModeTerminate,
 			objs: []interface{}{
 				kuardService,
 				sec1,
@@ -1255,6 +1396,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"TLSRoute with invalid listener protocol of HTTP": {
+			gatewayclass: validClass,
 			gateway: &gatewayapi_v1alpha1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "contour",
@@ -1306,7 +1448,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"TLSRoute with invalid listener kind": {
-			gateway: gatewayNoSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayNoSelector,
 			objs: []interface{}{
 				&v1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1343,7 +1486,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		// TLSRoute is in a different namespace than the Gateway,
 		// but will be allowed since "All" is set.
 		"TLSRoute: RouteGateways with GatewayAllowType: All": {
-			gateway: gatewayTLSRouteNoSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayTLSRouteNoSelector,
 			objs: []interface{}{
 				&v1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1395,7 +1539,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		// TLSRoute is in a different namespace than the Gateway,
 		// and is rejected since "SameNamespace" is set.
 		"TLSRoute doesn't match with RouteGateways.GatewayAllowType: SameNamespace": {
-			gateway: gatewayNoSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayNoSelector,
 			objs: []interface{}{
 				&v1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1432,7 +1577,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		// TLSRoute is in the same namespace of the Gateway,
 		// and is allowed since "SameNamespace" is set.
 		"TLSRoute matches with RouteGateways.GatewayAllowType: SameNamespace": {
-			gateway: gatewayTLSRouteNoSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayTLSRouteNoSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.TLSRoute{
@@ -1475,7 +1621,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		// TLSRoute references same Gateway is configured with
 		// in the FromList.
 		"TLSRoute matches with RouteGateways.GatewayAllowType: FromList": {
-			gateway: gatewayTLSRouteNoSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayTLSRouteNoSelector,
 			objs: []interface{}{
 				&v1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1531,7 +1678,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		// TLSRoute references different Gateway is configured with
 		// in the FromList.
 		"TLSRoute doesn't match with RouteGateways.GatewayAllowType: FromList": {
-			gateway: gatewayNoSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayNoSelector,
 			objs: []interface{}{
 				&v1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1571,7 +1719,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		},
 		// Issue: https://github.com/projectcontour/contour/issues/3591
 		"one gateway with two httproutes, different hostnames": {
-			gateway: gatewayWithNamespaceSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithNamespaceSelector,
 			objs: []interface{}{
 				&v1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1631,7 +1780,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"insert basic single route, single hostname, gateway From namespace selector, not matching": {
-			gateway: gatewayWithNamespaceSelectorNotMatching,
+			gatewayclass: validClass,
+			gateway:      gatewayWithNamespaceSelectorNotMatching,
 			objs: []interface{}{
 				&v1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1663,7 +1813,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		},
 		// Test that a gateway selector doesn't select routes that do not match.
 		"insert basic single route, single hostname which doesn't match gateway's selector": {
-			gateway: gatewaySelectorNotMatching,
+			gatewayclass: validClass,
+			gateway:      gatewaySelectorNotMatching,
 			objs: []interface{}{
 				kuardServiceCustomNs,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -1690,6 +1841,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		},
 		// Test that a gateway selector kind that doesn't match.
 		"insert gateway with selector kind that doesn't match": {
+			gatewayclass: validClass,
 			gateway: &gatewayapi_v1alpha1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "contour",
@@ -1731,6 +1883,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		},
 		// Test that a gateway selector group that doesn't match.
 		"insert gateway with selector group that doesn't match": {
+			gatewayclass: validClass,
 			gateway: &gatewayapi_v1alpha1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "contour",
@@ -1772,7 +1925,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"insert basic multiple routes, single hostname": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				blogService,
@@ -1813,7 +1967,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"multiple hosts": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -1855,7 +2010,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"no host defined": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -1888,7 +2044,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"wildcard hostname": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -1930,7 +2087,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"invalid hostnames - IP": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -1956,7 +2114,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"invalid hostnames - with port": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -1982,7 +2141,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"invalid hostnames - wildcard label by itself": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -2010,7 +2170,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		// If the ServiceName referenced from an HTTPRoute is missing,
 		// the route should return an HTTP503.
 		"missing service": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				&gatewayapi_v1alpha1.HTTPRoute{
 					ObjectMeta: metav1.ObjectMeta{
@@ -2043,7 +2204,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		},
 		// If port is not defined the route will be marked as invalid (#3352).
 		"missing port": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				&gatewayapi_v1alpha1.HTTPRoute{
 					ObjectMeta: metav1.ObjectMeta{
@@ -2068,7 +2230,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"insert basic single route with exact path match": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -2106,7 +2269,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 		},
 		// Single host with single route containing multiple prefixes to the same service.
 		"insert basic single route with multiple prefixes, single hostname": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -2160,6 +2324,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"insert basic single route, single hostname, gateway with TLS, HTTP protocol is ignored": {
+			gatewayclass: validClass,
 			gateway: &gatewayapi_v1alpha1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "contour",
@@ -2201,6 +2366,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"insert basic single route, single hostname, gateway with TLS, HTTPS protocol missing certificateRef": {
+			gatewayclass: validClass,
 			gateway: &gatewayapi_v1alpha1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "contour",
@@ -2227,7 +2393,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"insert basic single route, single hostname, gateway with TLS": {
-			gateway: gatewayWithOnlyTLS,
+			gatewayclass: validClass,
+			gateway:      gatewayWithOnlyTLS,
 			objs: []interface{}{
 				sec1,
 				kuardService,
@@ -2250,7 +2417,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"insert basic single route, single hostname, gateway with missing TLS certificate": {
-			gateway: gatewayWithOnlyTLS,
+			gatewayclass: validClass,
+			gateway:      gatewayWithOnlyTLS,
 			objs: []interface{}{
 				kuardService,
 				genericHTTPRoute,
@@ -2258,7 +2426,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"insert basic single route, single hostname, gateway with invalid TLS certificate": {
-			gateway: gatewayWithOnlyTLS,
+			gatewayclass: validClass,
+			gateway:      gatewayWithOnlyTLS,
 			objs: []interface{}{
 				&v1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
@@ -2274,7 +2443,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"insert basic single route, single hostname, gateway with TLS & Insecure Listeners": {
-			gateway: gatewayWithTLSandHTTP,
+			gatewayclass: validClass,
+			gateway:      gatewayWithTLSandHTTP,
 			objs: []interface{}{
 				sec1,
 				blogService,
@@ -2303,6 +2473,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"TLS Listener Gateway CertificateRef must be type core.Secret": {
+			gatewayclass: validClass,
 			gateway: &gatewayapi_v1alpha1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "contour",
@@ -2336,6 +2507,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"TLS Listener Gateway CertificateRef must be specified": {
+			gatewayclass: validClass,
 			gateway: &gatewayapi_v1alpha1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "contour",
@@ -2363,7 +2535,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"No valid hostnames defined": {
-			gateway: gatewayWithAllNamespace,
+			gatewayclass: validClass,
+			gateway:      gatewayWithAllNamespace,
 			objs: []interface{}{
 				&gatewayapi_v1alpha1.HTTPRoute{
 					ObjectMeta: metav1.ObjectMeta{
@@ -2392,6 +2565,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"Invalid listener protocol type (TCP)": {
+			gatewayclass: validClass,
 			gateway: &gatewayapi_v1alpha1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "contour",
@@ -2414,6 +2588,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"Invalid listener protocol type (UDP)": {
+			gatewayclass: validClass,
 			gateway: &gatewayapi_v1alpha1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "contour",
@@ -2436,6 +2611,7 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"Invalid listener protocol type (custom)": {
+			gatewayclass: validClass,
 			gateway: &gatewayapi_v1alpha1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "contour",
@@ -2458,7 +2634,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"insert basic single route, single hostname, gateway with TLS & Insecure Listeners, different selectors": {
-			gateway: gatewaywithtlsDifferentselectors,
+			gatewayclass: validClass,
+			gateway:      gatewaywithtlsDifferentselectors,
 			objs: []interface{}{
 				sec1,
 				kuardService,
@@ -2489,7 +2666,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"insert basic single route with single header match and path match": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -2540,7 +2718,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"insert two routes with single header match, path match and header match": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -2603,7 +2782,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"insert two routes with single header match without explicit path match": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -2650,7 +2830,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"Route rule with request header modifier": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -2705,7 +2886,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"HTTP forward with request header modifier": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -2754,7 +2936,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"Route rule with invalid request header modifier": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -2806,7 +2989,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"HTTP forward with invalid request header modifier": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -2856,7 +3040,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"different weights for multiple forwardTos": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				kuardService2,
@@ -2920,7 +3105,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"one service weight zero w/weights for other forwardTos": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				kuardService2,
@@ -2984,7 +3170,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"weight of zero for a single forwardTo results in 503": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				kuardService2,
@@ -3026,7 +3213,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"basic TLSRoute": {
-			gateway: gatewayWithTLSRouteSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithTLSRouteSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.TLSRoute{
@@ -3068,7 +3256,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"TLSRoute with multiple SNIs": {
-			gateway: gatewayWithTLSRouteSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithTLSRouteSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.TLSRoute{
@@ -3130,7 +3319,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"TLSRoute with multiple SNIs, one is invalid": {
-			gateway: gatewayWithTLSRouteSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithTLSRouteSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.TLSRoute{
@@ -3183,7 +3373,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"TLSRoute with multiple SNIs, all are invalid": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.TLSRoute{
@@ -3212,7 +3403,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"TLSRoute without any hostnames specified results in '*' match all": {
-			gateway: gatewayWithTLSRouteSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithTLSRouteSelector,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.TLSRoute{
@@ -3250,7 +3442,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"TLSRoute with missing forwardTo service": {
-			gateway: gatewayWithSelector,
+			gatewayclass: validClass,
+			gateway:      gatewayWithSelector,
 			objs: []interface{}{
 				&gatewayapi_v1alpha1.TLSRoute{
 					ObjectMeta: metav1.ObjectMeta{
@@ -3276,7 +3469,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			want: listeners(),
 		},
 		"insert gateway listener with host": {
-			gateway: gatewayWithHostname,
+			gatewayclass: validClass,
+			gateway:      gatewayWithHostname,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -3310,7 +3504,8 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 			),
 		},
 		"insert gateway listener with host, httproute with host": {
-			gateway: gatewayWithWildcardHostname,
+			gatewayclass: validClass,
+			gateway:      gatewayWithWildcardHostname,
 			objs: []interface{}{
 				kuardService,
 				&gatewayapi_v1alpha1.HTTPRoute{
@@ -3346,6 +3541,36 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 				},
 			),
 		},
+		"insert gateway listener with non-admitted gatewayclass": {
+			gatewayclass: notAdmittedClass,
+			gateway:      gatewayWithNotAdmittedClass,
+			objs: []interface{}{
+				kuardService,
+				&gatewayapi_v1alpha1.HTTPRoute{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "basic",
+						Namespace: "projectcontour",
+						Labels: map[string]string{
+							"app":  "contour",
+							"type": "controller",
+						},
+					},
+					Spec: gatewayapi_v1alpha1.HTTPRouteSpec{
+						Gateways: &gatewayapi_v1alpha1.RouteGateways{
+							Allow: gatewayAllowTypePtr(gatewayapi_v1alpha1.GatewayAllowSameNamespace),
+						},
+						Hostnames: []gatewayapi_v1alpha1.Hostname{
+							"http.projectcontour.io",
+						},
+						Rules: []gatewayapi_v1alpha1.HTTPRouteRule{{
+							Matches:   httpRouteMatch(gatewayapi_v1alpha1.PathMatchExact, "/blog"),
+							ForwardTo: httpRouteForwardTo("kuard", 8080, 1),
+						}},
+					},
+				},
+			},
+			want: listeners(),
+		},
 	}
 
 	for name, tc := range tests {
@@ -3357,8 +3582,9 @@ func TestDAGInsertGatewayAPI(t *testing.T) {
 						Name:      "contour",
 						Namespace: "projectcontour",
 					},
-					gateway:     tc.gateway,
-					FieldLogger: fixture.NewTestLogger(t),
+					gatewayclass: tc.gatewayclass,
+					gateway:      tc.gateway,
+					FieldLogger:  fixture.NewTestLogger(t),
 				},
 				Processors: []Processor{
 					&IngressProcessor{
@@ -10577,6 +10803,10 @@ func withMirror(r *Route, mirror *Service) *Route {
 		},
 	}
 	return r
+}
+
+func gatewayAddressTypePtr(addr gatewayapi_v1alpha1.AddressType) *gatewayapi_v1alpha1.AddressType {
+	return &addr
 }
 
 func routeSelectTypePtr(rst gatewayapi_v1alpha1.RouteSelectType) *gatewayapi_v1alpha1.RouteSelectType {
