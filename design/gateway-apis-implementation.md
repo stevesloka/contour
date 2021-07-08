@@ -102,7 +102,7 @@ It's expected that things that check the status will also check the `observedGen
 
 #### GatewayClass
 
-Contour watches for GatewayClass resources which can, optionally, define how an instance of Contour should be configured.
+Contour watches for GatewayClass resources which can, optionally, refer to a configuration object that will then be used for Contour configuration.
 A GatewayClass can reference a configuration resource (Configmap or CRD) which describes how the fleet of Envoys should be provisioned in the cluster along with how they are exposed outside of the cluster.
 
 If the GatewayClass doesn't reference any configuration resources, then a standard set of configuration is utilized much like the Contour QuickStart today.
@@ -170,16 +170,13 @@ The output of this watcher is Envoy configuration.
 
 ### Configuration
 Contour will have an entry added to the config file for the `ControllerName` it should watch.
-The `ControllerName` takes the format of `projectcontour.io/<namespace>/contour` which requires the `<namespace>` param to be specified matching the namespace where Contour is deployed. 
 
-This will look like this:
 ```yaml
 gateway:
   controllerName: 
   name: gatewayname  # <--- deprecate
   namespace: gatewaynamespace  # <-- deprecate
 ```
-
 Contour will look for a Gateway + GatewayClass that matches the `ControllerName` field specified in the configuration file.
 If it does not find a matching Gateway/GatewayClass, then it will begin processing GatewayAPI resources once they are available. 
 
@@ -189,11 +186,21 @@ If the gateway is removed while Contour is operating, then an error will be logg
 
 _NOTE: The fields `name` & `namespace` will be deprecated from the configuration file._
 
-### Code changes
-Contour already has support for importing the Gateway API objects into its Kubernetes cache.
-However, for some types, we need to be able to keep some details - this design suggests making those details properties of the cache, as `IngressClass` is currently.
+#### Managed Envoy
+
+Contour can optionally provision Envoy infrastructure in a Kubernetes cluster.
+A new field will be added to the Contour configuration file which will determine if Contour should dynamically provision a fleet of Envoys with a corresponding service.
+The field will be named `envoy` and contain a single value for now of `managed: true` or `managed: false`.
 
 This field will default to `false` if unspecified.
+
+Example config file:
+```yaml
+envoy:
+  managed: true
+gateway:
+  controllerName: projectcontour.io/ingress-controller
+```
 
 _NOTE: Typically Envoy is deployed as a Daemonset, but not required (could also be a Deployment), so the term `fleet` is used to identify the set of Kubernetes managed pods which represent an Envoy instance._
 
@@ -203,14 +210,6 @@ If envoy.managed is true, then Contour will automatically create a Envoy fleet/s
 Additionally, if a `Gateway.ControllerName` is set then the ports that are assigned to the Envoy service will match the Gateway discovered based upon the `ControllerName`.
 
 Additional RBAC permissions will be required to the namespace where Contour is deployed to allow it to dynamically manage Daemonsets/Deployments/Services, etc.
-
-Example config file:
-```yaml
-envoy:
-  managed: true
-gateway:
-  controllerName: projectcontour.io/ingress-controller
-```
 
 ##### managed: false
 
